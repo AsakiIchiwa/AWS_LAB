@@ -8,22 +8,34 @@ exports.findAll = (req, res) => {
 };
 
 exports.findOne = (req, res) => {
-  Order.findById(req.params.id, (err, data) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id) || id < 1) {
+    return res.status(400).render("error", { message: "Invalid order ID" });
+  }
+  Order.findById(id, (err, data) => {
     if (err) { res.status(404).render("error", { message: "Order not found" }); return; }
     res.render("order-detail", { order: data });
   });
 };
 
 exports.confirm = (req, res) => {
-  Order.confirm(req.params.id, (err) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id) || id < 1) {
+    return res.status(400).render("error", { message: "Invalid order ID" });
+  }
+  Order.confirm(id, (err) => {
     if (err) { res.status(500).render("error", { message: "Cannot confirm order" }); return; }
-    res.redirect("/admin/orders/" + req.params.id);
+    res.redirect("/admin/orders/" + id);
   });
 };
 
 exports.cancel = (req, res) => {
-  Order.cancel(req.params.id, (err, data) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id) || id < 1) {
+    return res.status(400).render("error", { message: "Invalid order ID" });
+  }
+  Order.cancel(id, (err, data) => {
     if (err) { res.status(500).render("error", { message: "Cannot cancel order" }); return; }
-    res.redirect("/admin/orders/" + req.params.id);
+    res.redirect("/admin/orders/" + id);
   });
 };

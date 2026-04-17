@@ -2,44 +2,55 @@ const Order = require("../models/order.model");
 const Product = require("../models/product.model");
 
 exports.createForm = (req, res) => {
-  Product.findById(req.params.productId, (err, data) => {
+  const productId = parseInt(req.params.productId);
+  if (isNaN(productId) || productId < 1) {
+    return res.status(400).render("error", { message: "Invalid product ID" });
+  }
+  Product.findById(productId, (err, data) => {
     if (err) { res.status(404).render("error", { message: "Product not found" }); return; }
     res.render("order-create", { product: data });
   });
 };
 
 exports.create = (req, res) => {
-  if (!req.body.quantity || !req.body.product_id) {
-    res.status(400).render("error", { message: "Quantity and product are required" });
-    return;
+  // Input validation
+  const quantity = parseInt(req.body.quantity);
+  const productId = parseInt(req.body.product_id);
+  const shopId = parseInt(req.body.shop_id) || 1;
+
+  if (!quantity || !productId || isNaN(quantity) || isNaN(productId)) {
+    return res.status(400).render("error", { message: "Valid quantity and product are required" });
+  }
+  if (quantity < 1 || quantity > 10000) {
+    return res.status(400).render("error", { message: "Quantity must be between 1 and 10,000" });
   }
 
+  // Sanitize note - strip HTML tags
+  const note = (req.body.note || "").replace(/<[^>]*>/g, "").substring(0, 500);
+
   const newOrder = {
-    shop_id: req.body.shop_id || 1,
-    product_id: req.body.product_id,
-    quantity: parseInt(req.body.quantity),
-    note: req.body.note || ""
+    shop_id: shopId,
+    product_id: productId,
+    quantity: quantity,
+    note: note
   };
 
   Order.create(newOrder, (err, data) => {
     if (err) {
       if (err.kind === "insufficient_stock") {
-        res.render("error", { message: `Insufficient stock. Available: ${err.available}` });
-        return;
+        return res.render("error", { message: `Insufficient stock. Available: ${err.available}` });
       }
       if (err.kind === "product_not_found") {
-        res.render("error", { message: "Product not found or inactive" });
-        return;
+        return res.render("error", { message: "Product not found or inactive" });
       }
-      res.status(500).render("error", { message: "Error creating order" });
-      return;
+      return res.status(500).render("error", { message: "Error creating order" });
     }
     res.redirect("/orders/" + data.id);
   });
 };
 
 exports.findAll = (req, res) => {
-  const shopId = req.query.shop_id || 1;
+  const shopId = parseInt(req.query.shop_id) || 1;
   Order.findByShopId(shopId, (err, data) => {
     if (err) { res.status(500).render("error", { message: "Error retrieving orders" }); return; }
     res.render("order-list", { orders: data });
@@ -47,7 +58,11 @@ exports.findAll = (req, res) => {
 };
 
 exports.findOne = (req, res) => {
-  Order.findById(req.params.id, (err, data) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id) || id < 1) {
+    return res.status(400).render("error", { message: "Invalid order ID" });
+  }
+  Order.findById(id, (err, data) => {
     if (err) {
       if (err.kind === "not_found") { res.status(404).render("error", { message: "Order not found" }); return; }
       res.status(500).render("error", { message: "Error retrieving order" }); return;

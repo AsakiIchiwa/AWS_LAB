@@ -12,16 +12,29 @@ exports.createForm = (req, res) => {
 };
 
 exports.create = (req, res) => {
-  if (!req.body.name || !req.body.price) {
-    res.status(400).render("error", { message: "Name and price are required" }); return;
+  // Input validation
+  const name = (req.body.name || "").trim().replace(/<[^>]*>/g, "");
+  const price = parseFloat(req.body.price);
+
+  if (!name || name.length < 2 || name.length > 255) {
+    return res.status(400).render("error", { message: "Product name must be 2-255 characters" });
   }
+  if (isNaN(price) || price < 0 || price > 999999.99) {
+    return res.status(400).render("error", { message: "Price must be between 0 and 999,999.99" });
+  }
+
+  const stock = parseInt(req.body.stock) || 0;
+  if (stock < 0 || stock > 1000000) {
+    return res.status(400).render("error", { message: "Stock must be between 0 and 1,000,000" });
+  }
+
   const newProduct = {
-    supplier_id: req.body.supplier_id || 1,
-    name: req.body.name,
-    description: req.body.description || "",
-    price: parseFloat(req.body.price),
-    stock: parseInt(req.body.stock) || 0,
-    category: req.body.category || ""
+    supplier_id: parseInt(req.body.supplier_id) || 1,
+    name: name,
+    description: (req.body.description || "").replace(/<[^>]*>/g, "").substring(0, 2000),
+    price: price,
+    stock: stock,
+    category: (req.body.category || "").replace(/<[^>]*>/g, "").substring(0, 100)
   };
   Product.create(newProduct, (err, data) => {
     if (err) { res.status(500).render("error", { message: "Error creating product" }); return; }
@@ -30,19 +43,39 @@ exports.create = (req, res) => {
 };
 
 exports.editForm = (req, res) => {
-  Product.findById(req.params.id, (err, data) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id) || id < 1) {
+    return res.status(400).render("error", { message: "Invalid product ID" });
+  }
+  Product.findById(id, (err, data) => {
     if (err) { res.status(404).render("error", { message: "Product not found" }); return; }
     res.render("product-update", { product: data });
   });
 };
 
 exports.update = (req, res) => {
-  Product.updateById(req.params.id, {
-    name: req.body.name,
-    description: req.body.description,
-    price: parseFloat(req.body.price),
-    stock: parseInt(req.body.stock),
-    category: req.body.category
+  const id = parseInt(req.params.id);
+  if (isNaN(id) || id < 1) {
+    return res.status(400).render("error", { message: "Invalid product ID" });
+  }
+
+  const name = (req.body.name || "").trim().replace(/<[^>]*>/g, "");
+  const price = parseFloat(req.body.price);
+  const stock = parseInt(req.body.stock);
+
+  if (!name || name.length < 2) {
+    return res.status(400).render("error", { message: "Product name is required" });
+  }
+  if (isNaN(price) || price < 0) {
+    return res.status(400).render("error", { message: "Valid price is required" });
+  }
+
+  Product.updateById(id, {
+    name: name,
+    description: (req.body.description || "").replace(/<[^>]*>/g, "").substring(0, 2000),
+    price: price,
+    stock: isNaN(stock) ? 0 : stock,
+    category: (req.body.category || "").replace(/<[^>]*>/g, "").substring(0, 100)
   }, (err) => {
     if (err) { res.status(500).render("error", { message: "Error updating product" }); return; }
     res.redirect("/admin/products");
@@ -50,7 +83,11 @@ exports.update = (req, res) => {
 };
 
 exports.remove = (req, res) => {
-  Product.remove(req.params.id, (err) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id) || id < 1) {
+    return res.status(400).render("error", { message: "Invalid product ID" });
+  }
+  Product.remove(id, (err) => {
     if (err) { res.status(500).render("error", { message: "Error deleting product" }); return; }
     res.redirect("/admin/products");
   });

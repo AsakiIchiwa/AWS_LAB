@@ -1,9 +1,10 @@
 const Product = require("../models/product.model");
 
 exports.findAll = (req, res) => {
-  const keyword = req.query.search || "";
+  // Sanitize search input
+  const keyword = (req.query.search || "").replace(/<[^>]*>/g, "").substring(0, 100);
   const handler = (err, data) => {
-    if (err) { res.status(500).send({ message: err.message || "Error retrieving products." }); return; }
+    if (err) { res.status(500).render("error", { message: "Error retrieving products." }); return; }
     res.render("product-list", { products: data, keyword: keyword });
   };
   if (keyword) {
@@ -14,7 +15,11 @@ exports.findAll = (req, res) => {
 };
 
 exports.findOne = (req, res) => {
-  Product.findById(req.params.id, (err, data) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id) || id < 1) {
+    return res.status(400).render("error", { message: "Invalid product ID" });
+  }
+  Product.findById(id, (err, data) => {
     if (err) {
       if (err.kind === "not_found") { res.status(404).render("error", { message: "Product not found" }); return; }
       res.status(500).render("error", { message: "Error retrieving product" }); return;
