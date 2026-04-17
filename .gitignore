@@ -1,8 +1,6 @@
 # Knowledge/PDF files
+Knowledge/
 *.pdf
-knowledge/
-plans/
-step-by-step-guide.md
 
 # Node modules
 node_modules/
@@ -14,3 +12,14 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Docker
+docker-compose.override.yml
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*

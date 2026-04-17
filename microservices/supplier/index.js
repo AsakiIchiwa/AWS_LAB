@@ -13,6 +13,11 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// Health check endpoint for ALB
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "supplier" });
+});
+
 // Controllers
 const productController = require("./app/controller/product.controller");
 const orderController = require("./app/controller/order.controller");
