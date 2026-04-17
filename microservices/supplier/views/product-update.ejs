@@ -9,31 +9,47 @@
   <div class="container mt-4">
     <a href="/admin/products" class="btn btn-secondary btn-sm mb-3">&larr; Back</a>
     <h2>Edit Product</h2>
-    <form method="POST" action="/admin/products/update/<%= product.id %>">
-      <div class="mb-3">
-        <label class="form-label">Product Name</label>
-        <input type="text" name="name" class="form-control" value="<%= product.name %>" required>
+    <div class="card">
+      <div class="card-body">
+        <form method="POST" action="/admin/products/update/<%= product.id %>" enctype="multipart/form-data">
+          <input type="hidden" name="existing_image_url" value="<%= product.image_url || '' %>">
+          <div class="mb-3">
+            <label class="form-label">Product Name *</label>
+            <input type="text" name="name" class="form-control" value="<%= product.name %>" required minlength="2" maxlength="255">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            <input type="text" name="category" class="form-control" value="<%= product.category || '' %>" maxlength="100">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3" maxlength="2000"><%= product.description || '' %></textarea>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Price ($) *</label>
+              <input type="number" name="price" class="form-control" step="0.01" value="<%= product.price %>" min="0" max="999999.99" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Stock *</label>
+              <input type="number" name="stock" class="form-control" value="<%= product.stock %>" min="0" max="1000000" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Product Image</label>
+            <% if (product.image_url) { %>
+              <div class="mb-2">
+                <img src="<%= product.image_url %>" alt="<%= product.name %>" style="max-width:200px; max-height:200px; border-radius:8px; border:1px solid #ddd;">
+                <div class="form-text">Current image. Upload a new one to replace it.</div>
+              </div>
+            <% } %>
+            <input type="file" name="image" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp">
+            <div class="form-text">Max 5MB. Leave empty to keep current image.</div>
+          </div>
+          <button type="submit" class="btn btn-primary">Update Product</button>
+        </form>
       </div>
-      <div class="mb-3">
-        <label class="form-label">Category</label>
-        <input type="text" name="category" class="form-control" value="<%= product.category || '' %>">
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Description</label>
-        <textarea name="description" class="form-control" rows="3"><%= product.description || '' %></textarea>
-      </div>
-      <div class="row">
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Price ($)</label>
-          <input type="number" name="price" class="form-control" step="0.01" min="0" value="<%= product.price %>" required>
-        </div>
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Stock</label>
-          <input type="number" name="stock" class="form-control" min="0" value="<%= product.stock %>" required>
-        </div>
-      </div>
-      <button type="submit" class="btn btn-warning">Update Product</button>
-    </form>
+    </div>
   </div>
 </body>
 </html>

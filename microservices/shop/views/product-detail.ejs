@@ -9,21 +9,30 @@
   <div class="container mt-4">
     <a href="/products" class="btn btn-secondary btn-sm mb-3">&larr; Back to Products</a>
     <div class="card">
-      <div class="card-body">
-        <h2><%= product.name %></h2>
-        <span class="badge bg-info"><%= product.category %></span>
-        <hr>
-        <p><%= product.description %></p>
-        <table class="table table-bordered w-50">
-          <tr><th>Price</th><td class="text-success fw-bold">$<%= parseFloat(product.price).toFixed(2) %></td></tr>
-          <tr><th>Stock</th><td><%= product.stock %></td></tr>
-          <tr><th>Supplier</th><td><%= product.supplier_name %></td></tr>
-        </table>
-        <% if (product.stock > 0) { %>
-          <a href="/orders/new/<%= product.id %>" class="btn btn-success">Place Order</a>
-        <% } else { %>
-          <button class="btn btn-secondary" disabled>Out of Stock</button>
+      <div class="row g-0">
+        <% if (product.image_url) { %>
+          <div class="col-md-5">
+            <img src="<%= product.image_url %>" class="img-fluid rounded-start" alt="<%= product.name %>" style="width:100%; height:100%; object-fit:cover; max-height:400px;">
+          </div>
         <% } %>
+        <div class="col-md-<%= product.image_url ? '7' : '12' %>">
+          <div class="card-body">
+            <h2><%= product.name %></h2>
+            <span class="badge bg-info"><%= product.category %></span>
+            <hr>
+            <p><%= product.description %></p>
+            <table class="table table-bordered w-75">
+              <tr><th>Price</th><td class="text-success fw-bold">$<%= parseFloat(product.price).toFixed(2) %></td></tr>
+              <tr><th>Stock</th><td><%= product.stock %></td></tr>
+              <tr><th>Supplier</th><td><%= product.supplier_name %></td></tr>
+            </table>
+            <% if (product.stock > 0) { %>
+              <a href="/orders/new/<%= product.id %>" class="btn btn-success">Place Order</a>
+            <% } else { %>
+              <button class="btn btn-secondary" disabled>Out of Stock</button>
+            <% } %>
+          </div>
+        </div>
       </div>
     </div>
   </div>

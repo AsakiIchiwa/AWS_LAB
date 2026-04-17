@@ -18,8 +18,8 @@ Product.findById = (id, result) => {
 };
 
 Product.create = (newProduct, result) => {
-  pool.query("INSERT INTO products (supplier_id, name, description, price, stock, status, category) VALUES (?, ?, ?, ?, ?, 'active', ?)",
-    [newProduct.supplier_id, newProduct.name, newProduct.description, newProduct.price, newProduct.stock, newProduct.category],
+  pool.query("INSERT INTO products (supplier_id, name, description, price, stock, status, category, image_url) VALUES (?, ?, ?, ?, ?, 'active', ?, ?)",
+    [newProduct.supplier_id, newProduct.name, newProduct.description, newProduct.price, newProduct.stock, newProduct.category, newProduct.image_url || null],
     (err, res) => {
       if (err) { result(err, null); return; }
       result(null, { id: res.insertId, ...newProduct });
@@ -28,8 +28,8 @@ Product.create = (newProduct, result) => {
 };
 
 Product.updateById = (id, product, result) => {
-  pool.query("UPDATE products SET name = ?, description = ?, price = ?, stock = ?, category = ? WHERE id = ?",
-    [product.name, product.description, product.price, product.stock, product.category, id],
+  pool.query("UPDATE products SET name = ?, description = ?, price = ?, stock = ?, category = ?, image_url = ? WHERE id = ?",
+    [product.name, product.description, product.price, product.stock, product.category, product.image_url || null, id],
     (err, res) => {
       if (err) { result(err, null); return; }
       if (res.affectedRows == 0) { result({ kind: "not_found" }, null); return; }

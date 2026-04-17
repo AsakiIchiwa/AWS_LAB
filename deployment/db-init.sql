@@ -61,11 +61,11 @@ INSERT INTO users (email, password_hash, full_name, role) VALUES
 ('supplier1@b2bmarket.com', 'hashed_password', 'XYZ Supplies Co.', 'supplier'),
 ('admin@b2bmarket.com', 'hashed_password', 'System Admin', 'admin');
 
--- Seed data: Products
-INSERT INTO products (supplier_id, name, description, price, stock, status, category) VALUES
-(2, 'Premium Arabica Coffee Beans', 'High-quality Arabica beans from Vietnam highlands, medium roast', 24.99, 100, 'active', 'Coffee'),
-(2, 'Robusta Coffee Beans 1kg', 'Strong Robusta beans, dark roast, perfect for espresso', 18.50, 200, 'active', 'Coffee'),
-(2, 'Green Tea Matcha Powder', 'Organic matcha powder from Japanese tea gardens', 32.00, 50, 'active', 'Tea'),
-(2, 'Ceramic Coffee Mug Set (4pcs)', 'Handcrafted ceramic mugs, microwave safe', 45.00, 30, 'active', 'Accessories'),
-(2, 'Stainless Steel Coffee Filter', 'Vietnamese phin coffee filter, durable stainless steel', 12.99, 150, 'active', 'Accessories'),
-(2, 'Organic Honey 500ml', 'Pure organic wildflower honey from central highlands', 15.75, 80, 'active', 'Condiments');
+-- Seed data: Products (with placeholder images from picsum.photos)
+INSERT INTO products (supplier_id, name, description, price, stock, status, category, image_url) VALUES
+(2, 'Premium Arabica Coffee Beans', 'High-quality Arabica beans from Vietnam highlands, medium roast', 24.99, 100, 'active', 'Coffee', 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=400&h=300&fit=crop'),
+(2, 'Robusta Coffee Beans 1kg', 'Strong Robusta beans, dark roast, perfect for espresso', 18.50, 200, 'active', 'Coffee', 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefda?w=400&h=300&fit=crop'),
+(2, 'Green Tea Matcha Powder', 'Organic matcha powder from Japanese tea gardens', 32.00, 50, 'active', 'Tea', 'https://images.unsplash.com/photo-1515823064-d6e0c04616a7?w=400&h=300&fit=crop'),
+(2, 'Ceramic Coffee Mug Set (4pcs)', 'Handcrafted ceramic mugs, microwave safe', 45.00, 30, 'active', 'Accessories', 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=400&h=300&fit=crop'),
+(2, 'Stainless Steel Coffee Filter', 'Vietnamese phin coffee filter, durable stainless steel', 12.99, 150, 'active', 'Accessories', 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=300&fit=crop'),
+(2, 'Organic Honey 500ml', 'Pure organic wildflower honey from central highlands', 15.75, 80, 'active', 'Condiments', 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=400&h=300&fit=crop');

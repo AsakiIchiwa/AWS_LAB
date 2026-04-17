@@ -21,6 +21,11 @@
       <% products.forEach(function(p) { %>
         <div class="col-md-4 mb-3">
           <div class="card h-100">
+            <% if (p.image_url) { %>
+              <img src="<%= p.image_url %>" class="card-img-top" alt="<%= p.name %>" style="height:200px; object-fit:cover;">
+            <% } else { %>
+              <div class="card-img-top d-flex align-items-center justify-content-center" style="height:200px; background:#f0f0f0; color:#aaa; font-size:48px;">?</div>
+            <% } %>
             <div class="card-body">
               <h5 class="card-title"><%= p.name %></h5>
               <p class="text-muted"><%= p.category %></p>
