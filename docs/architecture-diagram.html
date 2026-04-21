@@ -16,7 +16,7 @@
     font-style: italic;
     margin-bottom: 30px;
     border-radius: 4px;
-    width: 1200px;
+    width: 1100px;
     margin-left: auto;
     margin-right: auto;
   }
@@ -24,8 +24,8 @@
   
   .canvas {
     position: relative;
-    width: 1200px;
-    min-height: 1350px;
+    width: 1100px;
+    min-height: 1250px;
     margin: 0 auto;
   }
   
@@ -36,18 +36,17 @@
     border-radius: 6px;
     font-size: 12px;
     font-weight: 600;
-    min-width: 130px;
     z-index: 2;
   }
-  .svc .icon { font-size: 32px; display: block; margin-bottom: 4px; }
+  .svc .icon { font-size: 30px; display: block; margin-bottom: 4px; }
   .svc .name { display: block; font-size: 13px; color: #232f3e; }
   .svc .sub { display: block; font-size: 10px; color: #666; font-weight: 400; margin-top: 2px; }
   
   .tier {
     position: absolute;
-    padding: 6px 16px;
+    padding: 5px 14px;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: #fff;
     z-index: 3;
@@ -62,22 +61,21 @@
     background: #f8f9fa;
     border: 1px solid #ddd;
     border-radius: 6px;
-    padding: 10px 14px;
+    padding: 8px 12px;
     font-size: 11px;
     z-index: 2;
-    min-width: 180px;
   }
   .features .ftitle {
     font-weight: 700;
-    font-size: 12px;
+    font-size: 11px;
     color: #232f3e;
     border-bottom: 1px solid #ddd;
-    padding-bottom: 4px;
-    margin-bottom: 6px;
+    padding-bottom: 3px;
+    margin-bottom: 4px;
   }
   .features ul { list-style: none; padding: 0; }
-  .features ul li { padding: 2px 0; color: #444; }
-  .features ul li::before { content: "- "; color: #999; }
+  .features ul li { padding: 1px 0; color: #444; font-size: 10px; }
+  .features ul li::before { content: "▸ "; color: #999; }
   
   svg.arrows {
     position: absolute;
@@ -87,17 +85,25 @@
     z-index: 1;
     pointer-events: none;
   }
-  svg.arrows line, svg.arrows path {
-    stroke: #555;
-    stroke-width: 2;
-    fill: none;
+
+  .section-box {
+    position: absolute;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 10px;
+    background: rgba(248,249,250,0.4);
+    z-index: 0;
   }
-  svg.arrows .arrow-label {
+  .section-box .sec-label {
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    background: #fff;
+    padding: 0 6px;
     font-size: 10px;
-    fill: #666;
-    font-family: 'Segoe UI', Arial, sans-serif;
+    font-weight: 600;
+    color: #999;
   }
-  
+
   .cloud-boundary {
     position: absolute;
     border: 2px dashed #ccc;
@@ -110,27 +116,9 @@
     left: 20px;
     background: #fff;
     padding: 0 8px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: #888;
-  }
-
-  .section-box {
-    position: absolute;
-    border: 1.5px solid #e0e0e0;
-    border-radius: 10px;
-    background: rgba(248,249,250,0.5);
-    z-index: 0;
-  }
-  .section-box .sec-label {
-    position: absolute;
-    top: -11px;
-    left: 16px;
-    background: #fff;
-    padding: 0 8px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #999;
   }
 </style>
 </head>
@@ -143,269 +131,251 @@
 <div class="canvas">
 
   <!-- Cloud boundary -->
-  <div class="cloud-boundary" style="top:10px; left:200px; width:960px; height:1310px;">
+  <div class="cloud-boundary" style="top:10px; left:180px; width:890px; height:1210px;">
     <div class="cloud-label">AWS Cloud (us-east-1)</div>
   </div>
 
-  <!-- TIER LABELS -->
-  <div class="tier tier-web" style="top:30px; left:1040px;">Web Tier</div>
-  <div class="tier tier-app" style="top:390px; left:1040px;">App Tier</div>
-  <div class="tier tier-data" style="top:880px; left:1040px;">Data Tier</div>
-  <div class="tier tier-cicd" style="top:1100px; left:1040px;">CI/CD Tier</div>
+  <!-- TIER LABELS on far right -->
+  <div class="tier tier-web" style="top:55px; left:990px;">Web</div>
+  <div class="tier tier-app" style="top:360px; left:990px;">App</div>
+  <div class="tier tier-data" style="top:810px; left:990px;">Data</div>
+  <div class="tier tier-cicd" style="top:1060px; left:990px;">CI/CD</div>
 
-  <!-- ============ ROW 1: CLIENT + ALB ============ -->
-  
-  <!-- Browser Client -->
-  <div class="svc" style="top:50px; left:30px; background:#fff; border:2px solid #232f3e;">
+  <!-- ========== ROW 1: WEB TIER ========== -->
+
+  <!-- Browser -->
+  <div class="svc" style="top:40px; left:20px; background:#fff; border:2px solid #232f3e; min-width:110px;">
     <span class="icon">&#128187;</span>
     <span class="name">Browser Client</span>
-    <span class="sub">Shop Owner / Supplier</span>
+    <span class="sub">Shop / Supplier / Admin</span>
   </div>
 
   <!-- ALB -->
-  <div class="svc" style="top:40px; left:400px; background:#fff3e0; border:2px solid #ff9900;">
+  <div class="svc" style="top:35px; left:300px; background:#fff3e0; border:2px solid #ff9900; min-width:150px;">
     <span class="icon" style="color:#ff9900;">&#9878;</span>
     <span class="name">Application Load Balancer</span>
     <span class="sub">HTTP:80 | Path-based routing</span>
-    <span class="sub">Health check: /health</span>
   </div>
 
-  <!-- ALB routing rules - moved to the right, away from arrows -->
-  <div class="features" style="top:40px; left:680px; min-width:220px;">
-    <div class="ftitle">ALB Listener Rules</div>
+  <!-- ALB Rules - far right, no overlap -->
+  <div class="features" style="top:30px; left:620px; min-width:200px;">
+    <div class="ftitle">ALB Routing Rules</div>
     <ul>
-      <li>Path: /* --&gt; Shop Service TG</li>
-      <li>Path: /admin/* --&gt; Supplier Service TG</li>
-      <li>Health check: GET /health (8080)</li>
+      <li>/* → Shop Service (TG-1 / TG-2)</li>
+      <li>/admin/* → Supplier Service (TG-1 / TG-2)</li>
+      <li>Health: GET /health :8080</li>
+      <li>Blue/Green: 4 Target Groups total</li>
     </ul>
   </div>
 
-  <!-- ============ ROW 2: ECS SERVICES ============ -->
+  <!-- ========== ROW 2: APP TIER - SHOP ========== -->
 
   <!-- ECS Cluster box -->
-  <div class="section-box" style="top:200px; left:230px; width:730px; height:600px;">
-    <div class="sec-label">Amazon ECS Cluster (Fargate) - b2b-marketplace</div>
+  <div class="section-box" style="top:170px; left:210px; width:540px; height:560px;">
+    <div class="sec-label">ECS Cluster (Fargate) — b2b-marketplace</div>
   </div>
 
   <!-- Shop Service -->
-  <div class="svc" style="top:240px; left:260px; background:#e8f5e9; border:2px solid #2e7d32; min-width:170px;">
+  <div class="svc" style="top:210px; left:240px; background:#e8f5e9; border:2px solid #2e7d32; min-width:160px;">
     <span class="icon" style="color:#2e7d32;">&#9881;</span>
     <span class="name">Shop Service</span>
-    <span class="sub">ECS Task (Fargate)</span>
-    <span class="sub">0.25 vCPU | 512MB | Port 8080</span>
+    <span class="sub">Fargate | 0.25 vCPU | 512MB</span>
+    <span class="sub">Port 8080</span>
   </div>
 
-  <!-- Shop features - positioned clearly to the right -->
-  <div class="features" style="top:230px; left:500px; min-width:250px;">
-    <div class="ftitle">Shop Service Functions</div>
+  <!-- Shop features - right side, clearly separated -->
+  <div class="features" style="top:200px; left:470px; min-width:240px;">
+    <div class="ftitle">Shop Service Endpoints</div>
     <ul>
-      <li>GET /products - Browse catalog</li>
-      <li>GET /products?search= - Search</li>
-      <li>GET /products/:id - Product detail</li>
-      <li>POST /orders - Place order (Saga Step 1)</li>
-      <li>GET /orders - Order history</li>
-      <li>GET /orders/:id - Order tracking</li>
+      <li>GET /products — Browse catalog</li>
+      <li>GET /products?search= — Search</li>
+      <li>GET /products/:id — Detail</li>
+      <li>POST /orders — Create (Saga Step 1)</li>
+      <li>GET /orders — History</li>
+      <li>GET /orders/:id — Tracking</li>
     </ul>
   </div>
 
-  <!-- Supplier Service - pushed down significantly -->
-  <div class="svc" style="top:500px; left:260px; background:#e3f2fd; border:2px solid #1565c0; min-width:170px;">
+  <!-- ========== ROW 2: APP TIER - SUPPLIER ========== -->
+
+  <!-- Supplier Service -->
+  <div class="svc" style="top:460px; left:240px; background:#e3f2fd; border:2px solid #1565c0; min-width:160px;">
     <span class="icon" style="color:#1565c0;">&#9881;</span>
     <span class="name">Supplier Service</span>
-    <span class="sub">ECS Task (Fargate)</span>
-    <span class="sub">0.25 vCPU | 512MB | Port 8080</span>
+    <span class="sub">Fargate | 0.25 vCPU | 512MB</span>
+    <span class="sub">Port 8080</span>
   </div>
 
-  <!-- Supplier features - positioned clearly to the right, well below shop features -->
-  <div class="features" style="top:490px; left:500px; min-width:250px;">
-    <div class="ftitle">Supplier Service Functions</div>
+  <!-- Supplier features -->
+  <div class="features" style="top:440px; left:470px; min-width:250px;">
+    <div class="ftitle">Supplier Service Endpoints</div>
     <ul>
-      <li>CRUD /admin/products - Manage inventory</li>
-      <li>GET /admin/orders - View all orders</li>
-      <li>POST /admin/orders/:id/confirm (Saga Step 2)</li>
+      <li>CRUD /admin/products — Inventory</li>
+      <li>GET /admin/orders — All orders</li>
+      <li>POST /admin/orders/:id/confirm (Saga 2)</li>
       <li>POST /admin/orders/:id/cancel (Compensate)</li>
-      <li>POST /admin/orders/:id/payment (Saga Step 3)</li>
-      <li>Payment failure --&gt; Auto rollback stock</li>
+      <li>POST /admin/orders/:id/payment (Saga 3)</li>
+      <li>Failure → Auto rollback stock</li>
     </ul>
   </div>
 
-  <!-- ECR -->
-  <div class="svc" style="top:400px; left:810px; background:#fff3e0; border:2px solid #e65100; min-width:120px;">
+  <!-- ECR - outside ECS box, to the right -->
+  <div class="svc" style="top:350px; left:810px; background:#fff3e0; border:2px solid #e65100; min-width:120px;">
     <span class="icon" style="color:#e65100;">&#128230;</span>
     <span class="name">Amazon ECR</span>
-    <span class="sub">Docker Registry</span>
     <span class="sub">shop:latest</span>
     <span class="sub">supplier:latest</span>
   </div>
 
-  <!-- ============ ROW 3: DATABASE + MONITORING ============ -->
+  <!-- ========== ROW 3: DATA TIER ========== -->
 
   <!-- CloudWatch -->
-  <div class="svc" style="top:880px; left:230px; background:#f3e5f5; border:2px solid #6a1b9a; min-width:130px;">
+  <div class="svc" style="top:800px; left:220px; background:#f3e5f5; border:2px solid #6a1b9a; min-width:120px;">
     <span class="icon" style="color:#6a1b9a;">&#128200;</span>
-    <span class="name">CloudWatch Logs</span>
+    <span class="name">CloudWatch</span>
     <span class="sub">/ecs/shop</span>
     <span class="sub">/ecs/supplier</span>
   </div>
 
   <!-- RDS -->
-  <div class="svc" style="top:880px; left:450px; background:#e8eaf6; border:2px solid #283593; min-width:160px;">
+  <div class="svc" style="top:800px; left:430px; background:#e8eaf6; border:2px solid #283593; min-width:150px;">
     <span class="icon" style="color:#283593;">&#128451;</span>
-    <span class="name">Amazon RDS</span>
-    <span class="sub">MySQL 8.0 | db.t3.micro</span>
-    <span class="sub">Database: b2bmarket</span>
+    <span class="name">Amazon RDS (MySQL 8.0)</span>
+    <span class="sub">db.t3.micro | b2bmarket</span>
     <span class="sub">Single-AZ | 20GB gp2</span>
   </div>
 
   <!-- DB Schema -->
-  <div class="features" style="top:870px; left:680px; min-width:200px;">
+  <div class="features" style="top:790px; left:660px; min-width:190px;">
     <div class="ftitle">Database Tables</div>
     <ul>
       <li>users (shop, supplier, admin)</li>
       <li>products (catalog + stock)</li>
-      <li>orders (pending/confirmed/paid/cancelled)</li>
-      <li>payments (bank_transfer/qr/cod)</li>
+      <li>orders (status workflow)</li>
+      <li>payments (transfer/qr/cod)</li>
     </ul>
   </div>
 
-  <!-- ============ ROW 4: CI/CD ============ -->
+  <!-- ========== ROW 4: CI/CD ========== -->
 
-  <!-- CI/CD Section -->
-  <div class="section-box" style="top:1070px; left:230px; width:730px; height:140px;">
-    <div class="sec-label">CI/CD Pipeline (AWS CodePipeline - Skip Build Stage)</div>
+  <div class="section-box" style="top:1020px; left:210px; width:700px; height:130px;">
+    <div class="sec-label">CI/CD Pipeline — CodePipeline (Skip Build Stage)</div>
   </div>
 
   <!-- Cloud9 -->
-  <div class="svc" style="top:1100px; left:250px; background:#e8f5e9; border:2px solid #2e7d32; min-width:120px;">
+  <div class="svc" style="top:1050px; left:230px; background:#e8f5e9; border:2px solid #2e7d32; min-width:110px;">
     <span class="icon" style="color:#2e7d32;">&#9729;</span>
-    <span class="name">Cloud9 IDE</span>
-    <span class="sub">Manual Build</span>
-    <span class="sub">docker build + push</span>
+    <span class="name">Cloud9</span>
+    <span class="sub">docker build</span>
+    <span class="sub">+ ECR push</span>
   </div>
 
   <!-- ECR Source -->
-  <div class="svc" style="top:1100px; left:440px; background:#fff3e0; border:2px solid #e65100; min-width:120px;">
+  <div class="svc" style="top:1050px; left:410px; background:#fff3e0; border:2px solid #e65100; min-width:110px;">
     <span class="icon" style="color:#e65100;">&#128230;</span>
-    <span class="name">ECR (Source)</span>
-    <span class="sub">Source Stage</span>
-    <span class="sub">Image push trigger</span>
+    <span class="name">ECR Source</span>
+    <span class="sub">Image trigger</span>
   </div>
 
   <!-- CodeDeploy -->
-  <div class="svc" style="top:1100px; left:630px; background:#e0f7fa; border:2px solid #00838f; min-width:120px;">
+  <div class="svc" style="top:1050px; left:590px; background:#e0f7fa; border:2px solid #00838f; min-width:110px;">
     <span class="icon" style="color:#00838f;">&#128640;</span>
     <span class="name">CodeDeploy</span>
-    <span class="sub">Deploy Stage</span>
-    <span class="sub">Blue/Green to ECS</span>
+    <span class="sub">Blue/Green</span>
   </div>
 
-  <!-- Deploy target -->
-  <div class="svc" style="top:1100px; left:810px; background:#f3e5f5; border:2px solid #6a1b9a; min-width:110px;">
+  <!-- ECS target -->
+  <div class="svc" style="top:1050px; left:770px; background:#f3e5f5; border:2px solid #6a1b9a; min-width:110px;">
     <span class="icon" style="color:#6a1b9a;">&#9654;</span>
-    <span class="name">ECS Service</span>
-    <span class="sub">Blue/Green Deploy</span>
+    <span class="name">ECS Update</span>
     <span class="sub">Zero-downtime</span>
   </div>
 
-  <!-- ARROWS SVG -->
-  <svg class="arrows" viewBox="0 0 1200 1350" xmlns="http://www.w3.org/2000/svg">
+  <!-- ===== ARROWS ===== -->
+  <svg class="arrows" viewBox="0 0 1100 1250" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-        <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+      <marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#888"/>
       </marker>
-      <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-        <polygon points="0 0, 10 3.5, 0 7" fill="#ff9900"/>
+      <marker id="ah-o" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#ff9900"/>
       </marker>
-      <marker id="arrowhead-red" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-        <polygon points="0 0, 10 3.5, 0 7" fill="#c62828"/>
+      <marker id="ah-g" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#2e7d32"/>
       </marker>
-      <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-        <polygon points="0 0, 10 3.5, 0 7" fill="#2e7d32"/>
+      <marker id="ah-r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#c62828"/>
       </marker>
     </defs>
 
-    <!-- Browser to ALB -->
-    <line x1="170" y1="80" x2="395" y2="80" marker-end="url(#arrowhead-orange)" stroke="#ff9900" stroke-width="3"/>
-    <text x="240" y="72" class="arrow-label" fill="#ff9900" font-weight="bold">HTTP Request</text>
+    <!-- Browser → ALB (horizontal) -->
+    <line x1="140" y1="75" x2="295" y2="75" stroke="#ff9900" stroke-width="2.5" marker-end="url(#ah-o)"/>
+    <text x="185" y="66" font-size="10" fill="#ff9900" font-family="Segoe UI" font-weight="600">HTTP</text>
 
-    <!-- ALB to Shop -->
-    <line x1="440" y1="130" x2="340" y2="235" marker-end="url(#arrowhead)" stroke-dasharray="6,3"/>
-    <text x="350" y="175" class="arrow-label">Path: /*</text>
+    <!-- ALB → Shop (vertical, straight down) -->
+    <line x1="350" y1="120" x2="320" y2="205" stroke="#888" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ah)"/>
 
-    <!-- ALB to Supplier -->
-    <line x1="440" y1="130" x2="340" y2="495" marker-end="url(#arrowhead)" stroke-dasharray="6,3"/>
-    <text x="355" y="320" class="arrow-label">Path: /admin/*</text>
+    <!-- ALB → Supplier (vertical, straight down) -->
+    <line x1="390" y1="120" x2="320" y2="455" stroke="#888" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ah)"/>
 
-    <!-- Shop to RDS -->
-    <line x1="350" y1="340" x2="490" y2="875" marker-end="url(#arrowhead)" stroke="#283593"/>
-    <text x="380" y="620" class="arrow-label" fill="#283593">MySQL queries</text>
+    <!-- Shop → RDS (straight down) -->
+    <line x1="320" y1="310" x2="480" y2="795" stroke="#283593" stroke-width="1.5" marker-end="url(#ah)"/>
 
-    <!-- Supplier to RDS -->
-    <line x1="350" y1="590" x2="490" y2="875" marker-end="url(#arrowhead)" stroke="#283593"/>
+    <!-- Supplier → RDS -->
+    <line x1="320" y1="560" x2="490" y2="795" stroke="#283593" stroke-width="1.5" marker-end="url(#ah)"/>
 
-    <!-- Shop to CloudWatch -->
-    <line x1="290" y1="340" x2="290" y2="875" marker-end="url(#arrowhead)" stroke="#6a1b9a" stroke-dasharray="4,3"/>
-    <text x="250" y="770" class="arrow-label" fill="#6a1b9a">Logs</text>
-    
-    <!-- Supplier to CloudWatch -->
-    <line x1="310" y1="590" x2="300" y2="875" marker-end="url(#arrowhead)" stroke="#6a1b9a" stroke-dasharray="4,3"/>
+    <!-- Shop → CloudWatch (down-left) -->
+    <line x1="270" y1="310" x2="270" y2="795" stroke="#6a1b9a" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#ah)"/>
 
-    <!-- ECR to Shop (pull) -->
-    <line x1="810" y1="430" x2="440" y2="300" marker-end="url(#arrowhead)" stroke="#e65100" stroke-dasharray="4,3"/>
-    <text x="630" y="350" class="arrow-label" fill="#e65100">Image Pull</text>
+    <!-- ECR → ECS cluster (pull, single line) -->
+    <line x1="810" y1="400" x2="755" y2="400" stroke="#e65100" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ah)"/>
+    <text x="760" y="393" font-size="9" fill="#e65100" font-family="Segoe UI">pull</text>
 
-    <!-- ECR to Supplier (pull) -->
-    <line x1="810" y1="460" x2="440" y2="540" marker-end="url(#arrowhead)" stroke="#e65100" stroke-dasharray="4,3"/>
-
-    <!-- CI/CD flow arrows -->
-    <line x1="380" y1="1140" x2="435" y2="1140" marker-end="url(#arrowhead-green)" stroke="#2e7d32" stroke-width="3"/>
-    <line x1="570" y1="1140" x2="625" y2="1140" marker-end="url(#arrowhead-red)" stroke="#c62828" stroke-width="3"/>
-    <line x1="760" y1="1140" x2="805" y2="1140" marker-end="url(#arrowhead-red)" stroke="#c62828" stroke-width="3"/>
-
-    <!-- Cloud9 to ECR (push image) -->
-    <line x1="340" y1="1095" x2="845" y2="500" marker-end="url(#arrowhead)" stroke="#e65100" stroke-dasharray="4,3"/>
-    <text x="610" y="790" class="arrow-label" fill="#e65100">Push Image</text>
+    <!-- CI/CD flow: Cloud9 → ECR Source → CodeDeploy → ECS -->
+    <line x1="350" y1="1090" x2="405" y2="1090" stroke="#2e7d32" stroke-width="2.5" marker-end="url(#ah-g)"/>
+    <line x1="530" y1="1090" x2="585" y2="1090" stroke="#c62828" stroke-width="2.5" marker-end="url(#ah-r)"/>
+    <line x1="710" y1="1090" x2="765" y2="1090" stroke="#c62828" stroke-width="2.5" marker-end="url(#ah-r)"/>
   </svg>
 
 </div>
 
-<div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; width: 1200px; margin-left: auto; margin-right: auto;">
-  <h3 style="color: #232f3e; margin-bottom: 12px;">Saga Pattern - Order Processing Workflow</h3>
+<!-- Saga Pattern below -->
+<div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; width: 1100px; margin-left: auto; margin-right: auto;">
+  <h3 style="color: #232f3e; margin-bottom: 12px;">Saga Pattern — Order Processing Workflow</h3>
   <div style="display: flex; gap: 10px; align-items: stretch;">
     <div style="flex:1; background:#e8f5e9; border:2px solid #2e7d32; border-radius:8px; padding:12px;">
       <div style="font-weight:700; color:#2e7d32; margin-bottom:6px;">Step 1: Create Order</div>
       <div style="font-size:12px; color:#333;">
         Service: Shop<br>
-        Action: Validate stock, insert order, deduct stock<br>
-        Transaction: BEGIN ... COMMIT<br>
-        <strong>Failure:</strong> Rollback, no changes
+        Validate stock, insert order, deduct stock<br>
+        <strong>Fail:</strong> Rollback, no changes
       </div>
     </div>
-    <div style="display:flex; align-items:center; font-size:24px; color:#555;">&#10140;</div>
+    <div style="display:flex; align-items:center; font-size:24px; color:#555;">→</div>
     <div style="flex:1; background:#e3f2fd; border:2px solid #1565c0; border-radius:8px; padding:12px;">
-      <div style="font-weight:700; color:#1565c0; margin-bottom:6px;">Step 2: Confirm Order</div>
+      <div style="font-weight:700; color:#1565c0; margin-bottom:6px;">Step 2: Confirm</div>
       <div style="font-size:12px; color:#333;">
         Service: Supplier<br>
-        Action: Update status pending --&gt; confirmed<br>
-        <strong>Reject:</strong> Cancel order + restore stock (compensating)
+        Status: pending → confirmed<br>
+        <strong>Reject:</strong> Cancel + restore stock
       </div>
     </div>
-    <div style="display:flex; align-items:center; font-size:24px; color:#555;">&#10140;</div>
+    <div style="display:flex; align-items:center; font-size:24px; color:#555;">→</div>
     <div style="flex:1; background:#fff8e1; border:2px solid #f57f17; border-radius:8px; padding:12px;">
-      <div style="font-weight:700; color:#f57f17; margin-bottom:6px;">Step 3: Process Payment</div>
+      <div style="font-weight:700; color:#f57f17; margin-bottom:6px;">Step 3: Payment</div>
       <div style="font-size:12px; color:#333;">
         Service: Supplier<br>
-        Action: Insert payment, update status --&gt; paid<br>
-        <strong>Failure:</strong> Cancel order + restore stock (compensating)
+        Insert payment, status → paid<br>
+        <strong>Fail:</strong> Cancel + restore stock
       </div>
     </div>
-    <div style="display:flex; align-items:center; font-size:24px; color:#555;">&#10140;</div>
+    <div style="display:flex; align-items:center; font-size:24px; color:#555;">→</div>
     <div style="flex:1; background:#f3e5f5; border:2px solid #6a1b9a; border-radius:8px; padding:12px;">
-      <div style="font-weight:700; color:#6a1b9a; margin-bottom:6px;">Complete</div>
+      <div style="font-weight:700; color:#6a1b9a; margin-bottom:6px;">Complete ✓</div>
       <div style="font-size:12px; color:#333;">
-        Order status: paid<br>
+        Order: paid<br>
         Payment recorded<br>
-        Stock permanently deducted
+        Stock deducted
       </div>
     </div>
   </div>
