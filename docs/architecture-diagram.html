@@ -25,11 +25,10 @@
   .canvas {
     position: relative;
     width: 1200px;
-    min-height: 1100px;
+    min-height: 1350px;
     margin: 0 auto;
   }
   
-  /* Service boxes */
   .svc {
     position: absolute;
     text-align: center;
@@ -44,7 +43,6 @@
   .svc .name { display: block; font-size: 13px; color: #232f3e; }
   .svc .sub { display: block; font-size: 10px; color: #666; font-weight: 400; margin-top: 2px; }
   
-  /* Tier labels */
   .tier {
     position: absolute;
     padding: 6px 16px;
@@ -58,9 +56,7 @@
   .tier-app { background: #cc6600; }
   .tier-data { background: #1a5276; }
   .tier-cicd { background: #8b0000; }
-  .tier-monitor { background: #6c3483; }
   
-  /* Feature boxes */
   .features {
     position: absolute;
     background: #f8f9fa;
@@ -83,7 +79,6 @@
   .features ul li { padding: 2px 0; color: #444; }
   .features ul li::before { content: "- "; color: #999; }
   
-  /* Arrows via SVG */
   svg.arrows {
     position: absolute;
     top: 0; left: 0;
@@ -103,7 +98,6 @@
     font-family: 'Segoe UI', Arial, sans-serif;
   }
   
-  /* Cloud boundary */
   .cloud-boundary {
     position: absolute;
     border: 2px dashed #ccc;
@@ -121,7 +115,6 @@
     color: #888;
   }
 
-  /* Section dividers */
   .section-box {
     position: absolute;
     border: 1.5px solid #e0e0e0;
@@ -150,35 +143,35 @@
 <div class="canvas">
 
   <!-- Cloud boundary -->
-  <div class="cloud-boundary" style="top:80px; left:200px; width:960px; height:960px;">
+  <div class="cloud-boundary" style="top:10px; left:200px; width:960px; height:1310px;">
     <div class="cloud-label">AWS Cloud (us-east-1)</div>
   </div>
 
   <!-- TIER LABELS -->
-  <div class="tier tier-web" style="top:95px; left:1040px;">Web Tier</div>
-  <div class="tier tier-app" style="top:350px; left:1040px;">App Tier</div>
-  <div class="tier tier-data" style="top:700px; left:1040px;">Data Tier</div>
-  <div class="tier tier-cicd" style="top:890px; left:1040px;">CI/CD Tier</div>
+  <div class="tier tier-web" style="top:30px; left:1040px;">Web Tier</div>
+  <div class="tier tier-app" style="top:390px; left:1040px;">App Tier</div>
+  <div class="tier tier-data" style="top:880px; left:1040px;">Data Tier</div>
+  <div class="tier tier-cicd" style="top:1100px; left:1040px;">CI/CD Tier</div>
 
   <!-- ============ ROW 1: CLIENT + ALB ============ -->
   
   <!-- Browser Client -->
-  <div class="svc" style="top:120px; left:30px; background:#fff; border:2px solid #232f3e;">
+  <div class="svc" style="top:50px; left:30px; background:#fff; border:2px solid #232f3e;">
     <span class="icon">&#128187;</span>
     <span class="name">Browser Client</span>
     <span class="sub">Shop Owner / Supplier</span>
   </div>
 
   <!-- ALB -->
-  <div class="svc" style="top:110px; left:400px; background:#fff3e0; border:2px solid #ff9900;">
+  <div class="svc" style="top:40px; left:400px; background:#fff3e0; border:2px solid #ff9900;">
     <span class="icon" style="color:#ff9900;">&#9878;</span>
     <span class="name">Application Load Balancer</span>
     <span class="sub">HTTP:80 | Path-based routing</span>
     <span class="sub">Health check: /health</span>
   </div>
 
-  <!-- ALB routing rules -->
-  <div class="features" style="top:200px; left:370px; min-width:220px;">
+  <!-- ALB routing rules - moved to the right, away from arrows -->
+  <div class="features" style="top:40px; left:680px; min-width:220px;">
     <div class="ftitle">ALB Listener Rules</div>
     <ul>
       <li>Path: /* --&gt; Shop Service TG</li>
@@ -190,20 +183,20 @@
   <!-- ============ ROW 2: ECS SERVICES ============ -->
 
   <!-- ECS Cluster box -->
-  <div class="section-box" style="top:320px; left:230px; width:730px; height:310px;">
+  <div class="section-box" style="top:200px; left:230px; width:730px; height:600px;">
     <div class="sec-label">Amazon ECS Cluster (Fargate) - b2b-marketplace</div>
   </div>
 
   <!-- Shop Service -->
-  <div class="svc" style="top:350px; left:260px; background:#e8f5e9; border:2px solid #2e7d32; min-width:160px;">
+  <div class="svc" style="top:240px; left:260px; background:#e8f5e9; border:2px solid #2e7d32; min-width:170px;">
     <span class="icon" style="color:#2e7d32;">&#9881;</span>
     <span class="name">Shop Service</span>
     <span class="sub">ECS Task (Fargate)</span>
     <span class="sub">0.25 vCPU | 512MB | Port 8080</span>
   </div>
 
-  <!-- Shop features -->
-  <div class="features" style="top:345px; left:460px;">
+  <!-- Shop features - positioned clearly to the right -->
+  <div class="features" style="top:230px; left:500px; min-width:250px;">
     <div class="ftitle">Shop Service Functions</div>
     <ul>
       <li>GET /products - Browse catalog</li>
@@ -215,16 +208,16 @@
     </ul>
   </div>
 
-  <!-- Supplier Service -->
-  <div class="svc" style="top:500px; left:260px; background:#e3f2fd; border:2px solid #1565c0; min-width:160px;">
+  <!-- Supplier Service - pushed down significantly -->
+  <div class="svc" style="top:500px; left:260px; background:#e3f2fd; border:2px solid #1565c0; min-width:170px;">
     <span class="icon" style="color:#1565c0;">&#9881;</span>
     <span class="name">Supplier Service</span>
     <span class="sub">ECS Task (Fargate)</span>
     <span class="sub">0.25 vCPU | 512MB | Port 8080</span>
   </div>
 
-  <!-- Supplier features -->
-  <div class="features" style="top:495px; left:460px; min-width: 220px;">
+  <!-- Supplier features - positioned clearly to the right, well below shop features -->
+  <div class="features" style="top:490px; left:500px; min-width:250px;">
     <div class="ftitle">Supplier Service Functions</div>
     <ul>
       <li>CRUD /admin/products - Manage inventory</li>
@@ -237,7 +230,7 @@
   </div>
 
   <!-- ECR -->
-  <div class="svc" style="top:420px; left:800px; background:#fff3e0; border:2px solid #e65100; min-width:120px;">
+  <div class="svc" style="top:400px; left:810px; background:#fff3e0; border:2px solid #e65100; min-width:120px;">
     <span class="icon" style="color:#e65100;">&#128230;</span>
     <span class="name">Amazon ECR</span>
     <span class="sub">Docker Registry</span>
@@ -247,8 +240,16 @@
 
   <!-- ============ ROW 3: DATABASE + MONITORING ============ -->
 
+  <!-- CloudWatch -->
+  <div class="svc" style="top:880px; left:230px; background:#f3e5f5; border:2px solid #6a1b9a; min-width:130px;">
+    <span class="icon" style="color:#6a1b9a;">&#128200;</span>
+    <span class="name">CloudWatch Logs</span>
+    <span class="sub">/ecs/shop</span>
+    <span class="sub">/ecs/supplier</span>
+  </div>
+
   <!-- RDS -->
-  <div class="svc" style="top:700px; left:400px; background:#e8eaf6; border:2px solid #283593; min-width:160px;">
+  <div class="svc" style="top:880px; left:450px; background:#e8eaf6; border:2px solid #283593; min-width:160px;">
     <span class="icon" style="color:#283593;">&#128451;</span>
     <span class="name">Amazon RDS</span>
     <span class="sub">MySQL 8.0 | db.t3.micro</span>
@@ -257,7 +258,7 @@
   </div>
 
   <!-- DB Schema -->
-  <div class="features" style="top:690px; left:610px; min-width:200px;">
+  <div class="features" style="top:870px; left:680px; min-width:200px;">
     <div class="ftitle">Database Tables</div>
     <ul>
       <li>users (shop, supplier, admin)</li>
@@ -267,31 +268,23 @@
     </ul>
   </div>
 
-  <!-- CloudWatch -->
-  <div class="svc" style="top:700px; left:230px; background:#f3e5f5; border:2px solid #6a1b9a; min-width:130px;">
-    <span class="icon" style="color:#6a1b9a;">&#128200;</span>
-    <span class="name">CloudWatch Logs</span>
-    <span class="sub">/ecs/shop</span>
-    <span class="sub">/ecs/supplier</span>
-  </div>
-
   <!-- ============ ROW 4: CI/CD ============ -->
 
   <!-- CI/CD Section -->
-  <div class="section-box" style="top:870px; left:230px; width:730px; height:140px;">
+  <div class="section-box" style="top:1070px; left:230px; width:730px; height:140px;">
     <div class="sec-label">CI/CD Pipeline (AWS CodePipeline - Skip Build Stage)</div>
   </div>
 
   <!-- Cloud9 -->
-  <div class="svc" style="top:900px; left:250px; background:#e8f5e9; border:2px solid #2e7d32; min-width:120px;">
+  <div class="svc" style="top:1100px; left:250px; background:#e8f5e9; border:2px solid #2e7d32; min-width:120px;">
     <span class="icon" style="color:#2e7d32;">&#9729;</span>
     <span class="name">Cloud9 IDE</span>
     <span class="sub">Manual Build</span>
-    <span class="sub">docker build + ECR push</span>
+    <span class="sub">docker build + push</span>
   </div>
 
   <!-- ECR Source -->
-  <div class="svc" style="top:900px; left:440px; background:#fff3e0; border:2px solid #e65100; min-width:120px;">
+  <div class="svc" style="top:1100px; left:440px; background:#fff3e0; border:2px solid #e65100; min-width:120px;">
     <span class="icon" style="color:#e65100;">&#128230;</span>
     <span class="name">ECR (Source)</span>
     <span class="sub">Source Stage</span>
@@ -299,7 +292,7 @@
   </div>
 
   <!-- CodeDeploy -->
-  <div class="svc" style="top:900px; left:630px; background:#e0f7fa; border:2px solid #00838f; min-width:120px;">
+  <div class="svc" style="top:1100px; left:630px; background:#e0f7fa; border:2px solid #00838f; min-width:120px;">
     <span class="icon" style="color:#00838f;">&#128640;</span>
     <span class="name">CodeDeploy</span>
     <span class="sub">Deploy Stage</span>
@@ -307,7 +300,7 @@
   </div>
 
   <!-- Deploy target -->
-  <div class="svc" style="top:900px; left:810px; background:#f3e5f5; border:2px solid #6a1b9a; min-width:110px;">
+  <div class="svc" style="top:1100px; left:810px; background:#f3e5f5; border:2px solid #6a1b9a; min-width:110px;">
     <span class="icon" style="color:#6a1b9a;">&#9654;</span>
     <span class="name">ECS Service</span>
     <span class="sub">Blue/Green Deploy</span>
@@ -315,7 +308,7 @@
   </div>
 
   <!-- ARROWS SVG -->
-  <svg class="arrows" viewBox="0 0 1200 1100" xmlns="http://www.w3.org/2000/svg">
+  <svg class="arrows" viewBox="0 0 1200 1350" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
         <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
@@ -332,42 +325,46 @@
     </defs>
 
     <!-- Browser to ALB -->
-    <line x1="170" y1="148" x2="395" y2="148" marker-end="url(#arrowhead-orange)" stroke="#ff9900" stroke-width="3"/>
-    <text x="250" y="140" class="arrow-label" fill="#ff9900" font-weight="bold">HTTP Request</text>
+    <line x1="170" y1="80" x2="395" y2="80" marker-end="url(#arrowhead-orange)" stroke="#ff9900" stroke-width="3"/>
+    <text x="240" y="72" class="arrow-label" fill="#ff9900" font-weight="bold">HTTP Request</text>
 
     <!-- ALB to Shop -->
-    <line x1="440" y1="185" x2="340" y2="350" marker-end="url(#arrowhead)" stroke-dasharray="6,3"/>
-    <text x="350" y="275" class="arrow-label">Path: /*</text>
+    <line x1="440" y1="130" x2="340" y2="235" marker-end="url(#arrowhead)" stroke-dasharray="6,3"/>
+    <text x="350" y="175" class="arrow-label">Path: /*</text>
 
     <!-- ALB to Supplier -->
-    <line x1="480" y1="185" x2="340" y2="500" marker-end="url(#arrowhead)" stroke-dasharray="6,3"/>
-    <text x="430" y="350" class="arrow-label">Path: /admin/*</text>
+    <line x1="440" y1="130" x2="340" y2="495" marker-end="url(#arrowhead)" stroke-dasharray="6,3"/>
+    <text x="355" y="320" class="arrow-label">Path: /admin/*</text>
 
     <!-- Shop to RDS -->
-    <line x1="340" y1="430" x2="440" y2="700" marker-end="url(#arrowhead)" stroke="#283593"/>
-    <text x="340" y="580" class="arrow-label" fill="#283593">MySQL queries</text>
+    <line x1="350" y1="340" x2="490" y2="875" marker-end="url(#arrowhead)" stroke="#283593"/>
+    <text x="380" y="620" class="arrow-label" fill="#283593">MySQL queries</text>
 
     <!-- Supplier to RDS -->
-    <line x1="340" y1="575" x2="440" y2="700" marker-end="url(#arrowhead)" stroke="#283593"/>
+    <line x1="350" y1="590" x2="490" y2="875" marker-end="url(#arrowhead)" stroke="#283593"/>
 
     <!-- Shop to CloudWatch -->
-    <line x1="300" y1="430" x2="295" y2="700" marker-end="url(#arrowhead)" stroke="#6a1b9a" stroke-dasharray="4,3"/>
+    <line x1="290" y1="340" x2="290" y2="875" marker-end="url(#arrowhead)" stroke="#6a1b9a" stroke-dasharray="4,3"/>
+    <text x="250" y="770" class="arrow-label" fill="#6a1b9a">Logs</text>
     
     <!-- Supplier to CloudWatch -->
-    <line x1="290" y1="575" x2="290" y2="700" marker-end="url(#arrowhead)" stroke="#6a1b9a" stroke-dasharray="4,3"/>
+    <line x1="310" y1="590" x2="300" y2="875" marker-end="url(#arrowhead)" stroke="#6a1b9a" stroke-dasharray="4,3"/>
 
-    <!-- ECR to ECS (pull) -->
-    <line x1="800" y1="480" x2="430" y2="440" marker-end="url(#arrowhead)" stroke="#e65100" stroke-dasharray="4,3"/>
-    <text x="600" y="440" class="arrow-label" fill="#e65100">Image Pull</text>
+    <!-- ECR to Shop (pull) -->
+    <line x1="810" y1="430" x2="440" y2="300" marker-end="url(#arrowhead)" stroke="#e65100" stroke-dasharray="4,3"/>
+    <text x="630" y="350" class="arrow-label" fill="#e65100">Image Pull</text>
+
+    <!-- ECR to Supplier (pull) -->
+    <line x1="810" y1="460" x2="440" y2="540" marker-end="url(#arrowhead)" stroke="#e65100" stroke-dasharray="4,3"/>
 
     <!-- CI/CD flow arrows -->
-    <line x1="380" y1="935" x2="435" y2="935" marker-end="url(#arrowhead-green)" stroke="#2e7d32" stroke-width="3"/>
-    <line x1="570" y1="935" x2="625" y2="935" marker-end="url(#arrowhead-red)" stroke="#c62828" stroke-width="3"/>
-    <line x1="760" y1="935" x2="805" y2="935" marker-end="url(#arrowhead-red)" stroke="#c62828" stroke-width="3"/>
+    <line x1="380" y1="1140" x2="435" y2="1140" marker-end="url(#arrowhead-green)" stroke="#2e7d32" stroke-width="3"/>
+    <line x1="570" y1="1140" x2="625" y2="1140" marker-end="url(#arrowhead-red)" stroke="#c62828" stroke-width="3"/>
+    <line x1="760" y1="1140" x2="805" y2="1140" marker-end="url(#arrowhead-red)" stroke="#c62828" stroke-width="3"/>
 
     <!-- Cloud9 to ECR (push image) -->
-    <line x1="340" y1="900" x2="830" y2="490" marker-end="url(#arrowhead)" stroke="#e65100" stroke-dasharray="4,3"/>
-    <text x="550" y="680" class="arrow-label" fill="#e65100">Push Image</text>
+    <line x1="340" y1="1095" x2="845" y2="500" marker-end="url(#arrowhead)" stroke="#e65100" stroke-dasharray="4,3"/>
+    <text x="610" y="790" class="arrow-label" fill="#e65100">Push Image</text>
   </svg>
 
 </div>
