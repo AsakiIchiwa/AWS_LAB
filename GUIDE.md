@@ -885,17 +885,130 @@ The `LabRole` is a pre-configured IAM role with broad permissions across support
 | **Identity-Based Policies** | LabRole has an identity-based policy attached that grants permissions to AWS services. In production, you would create specific policies per service. |
 | **Permission Boundaries** | Learner Lab enforces permission boundaries: region limited to `us-east-1`/`us-west-2`, instance types limited, no IAM modifications. |
 
+### Application-Level Role-Based Access Control (RBAC)
+
+Since Learner Lab does not allow custom IAM users/groups/roles, role-based access control is implemented **at the application level** using middleware. This mirrors IAM concepts (users, groups, policies) within the application code:
+
+| IAM Concept | Application Equivalent | Implementation |
+|---|---|---|
+| **IAM Users** | `users` table in MySQL | Each user has `id`, `email`, `password_hash`, `role`, `status` |
+| **IAM Groups** | `role` field: `shop`, `supplier`, `admin` | Three roles with different permission sets |
+| **IAM Policies** | Express middleware | `requireAuth` (identity-based) and `requireAdmin` (resource-based) |
+| **Authentication** | `bcryptjs` + `express-session` | Like IAM login — verify identity before granting access |
+| **Authorization** | Role checks in middleware | Like IAM policy evaluation — check if role allows the action |
+| **Least Privilege** | Each role only accesses its own routes | Shop can't access `/admin/*`, Supplier can't access Shop-only routes |
+
+#### Role Permissions Matrix
+
+| Permission | Shop (Buyer) | Supplier (Seller) | Admin |
+|---|---|---|---|
+| Browse products | ✅ | ❌ | ❌ |
+| Send RFQ | ✅ | ❌ | ❌ |
+| Accept/Reject quotes | ✅ | ❌ | ❌ |
+| Create orders | ✅ | ❌ | ❌ |
+| Manage products (CRUD + S3 images) | ❌ | ✅ | ❌ |
+| Submit quotes | ❌ | ✅ | ❌ |
+| Confirm/Cancel orders | ❌ | ✅ | ❌ |
+| Process payments | ❌ | ✅ | ❌ |
+| Approve/Reject users | ❌ | ❌ | ✅ |
+| Approve/Reject products | ❌ | ❌ | ✅ |
+| View all RFQs/Contracts | ❌ | ❌ | ✅ |
+| System dashboard | ❌ | ❌ | ✅ |
+
+#### How It Works in Code
+
+```javascript
+// Authentication middleware (like IAM identity verification)
+const requireAuth = (req, res, next) => {
+  if (!req.session.user) return res.redirect('/login'); // No identity → deny
+  next(); // Identity verified → proceed
+};
+
+// Authorization middleware (like IAM policy: "Effect: Allow, Action: admin:*")
+const requireAdmin = (req, res, next) => {
+  if (req.session.user.role !== 'admin') return res.status(403).send('Forbidden');
+  next(); // Role = admin → allow
+};
+
+// Route-level access control (like IAM resource-based policies)
+app.get('/admin/manage', requireAuth, requireAdmin, adminController.dashboard);
+// Only authenticated users with admin role can access this route
+```
+
+#### ALB Path-Based Routing as Network-Level RBAC
+
+The ALB listener rules act as a **network-level access control layer**, similar to IAM resource policies:
+
+| ALB Rule | Effect | Analogous IAM Concept |
+|---|---|---|
+| Path `/admin/*` → Supplier service | Only supplier/admin users reach the Supplier service | Resource-based policy: only certain principals can access the resource |
+| Default `/*` → Shop service | Shop users reach the Shop service | Default allow for authenticated principals |
+
+This creates **two layers of access control**: ALB routes traffic to the correct service, then the application middleware verifies the user's role.
+
 ### Production IAM Recommendations (Beyond Learner Lab)
 
-In a real production environment, you would create separate, least-privilege roles:
+In a real production environment, you would create separate IAM roles per service following least privilege. Each role would only have the minimum AWS permissions needed:
+
+#### ECS Task Roles (per microservice)
+
+**Shop Service Task Role** (`shopTaskRole`):
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["rds-db:connect"],
+      "Resource": "arn:aws:rds-db:us-east-1:<ACCOUNT_ID>:dbuser:*/admin"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::b2b-marketplace-images/*"
+    }
+  ]
+}
+```
+> Shop only needs to **read** product images from S3 and **connect** to RDS. No S3 write access.
+
+**Supplier Service Task Role** (`supplierTaskRole`):
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["rds-db:connect"],
+      "Resource": "arn:aws:rds-db:us-east-1:<ACCOUNT_ID>:dbuser:*/admin"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:DeleteObject", "s3:GetObject"],
+      "Resource": "arn:aws:s3:::b2b-marketplace-images/*"
+    }
+  ]
+}
+```
+> Supplier needs S3 **write** access to upload/delete product images, plus read and RDS connect.
+
+#### CI/CD Service Roles
 
 | Role | Permissions |
 |---|---|
 | `ecsTaskExecutionRole` | `ecr:GetAuthorizationToken`, `ecr:BatchGetImage`, `logs:CreateLogStream`, `logs:PutLogEvents` |
-| `shopTaskRole` | `rds-db:connect`, `s3:GetObject` (read-only S3) |
-| `supplierTaskRole` | `rds-db:connect`, `s3:PutObject`, `s3:DeleteObject` (S3 write for product images) |
 | `codeDeployRole` | `ecs:*`, `elasticloadbalancing:*`, `iam:PassRole` |
 | `codePipelineRole` | `ecr:DescribeImages`, `codedeploy:CreateDeployment`, `s3:*` (artifacts) |
+
+#### IAM Users and Groups (for team members)
+
+| IAM Group | Members | Policies |
+|---|---|---|
+| `Developers` | Team members who write code | CodeCommit push/pull, ECR push, Cloud9 access |
+| `DevOps` | Team members who manage infrastructure | Full ECS/ALB/RDS/CodePipeline access |
+| `ReadOnly` | Reviewers, project managers | ViewOnly access to all resources |
+
+> **In Learner Lab**: All of this is handled by the single `LabRole`. The application-level RBAC (shop/supplier/admin middleware) compensates for the inability to create per-service IAM roles.
 
 ---
 
