@@ -18,6 +18,7 @@
 - [Budget Management ($50 Learner Lab)](#budget-management-50-learner-lab)
 - [Demo Script (Saga Workflow)](#demo-script-saga-workflow)
 - [Daily Checklist](#daily-checklist)
+- [S3 Bucket Reference](#s3-bucket-reference)
 
 ---
 
@@ -362,43 +363,33 @@ Verify: In the ECR console → Select each repository → Confirm the `latest` i
 > aws ecs create-cluster --cluster-name b2b-marketplace
 > ```
 
-### Task 5.3: Create task definition files and register them
+### Task 5.3: Prepare task definition files (registration deferred to Phase 8)
 
-The task definition files are already in the `deployment/` directory. You need to update the placeholder values.
+The task definition files are already in the `deployment/` directory. In this task we **only substitute the AWS account ID** for the IAM role ARNs. The `<IMAGE1_NAME>` and `<RDS-ENDPOINT>` placeholders are intentionally left in place — they will be substituted in Phase 6.4 (RDS endpoint) and Phase 8.1 (ECR image URI), then registered as a single working revision before service creation.
+
+> **⚠️ Why defer registration?** Registering a taskdef while it still contains `<IMAGE1_NAME>` or `<RDS-ENDPOINT>` literals produces a broken revision — ECS will be unable to pull the image or connect to the database, and tasks will crash-loop. Earlier versions of this guide registered too early; do not register here.
+
+Substitute the account ID in both files:
 
 ```bash
 cd ~/environment/AWS_LAB/deployment
 
-# Get required values
-account_id=$(aws sts get-caller-identity | grep Account | cut -d '"' -f4)
+account_id=$(aws sts get-caller-identity --query Account --output text)
 echo "Account ID: $account_id"
 
-# Get RDS endpoint (after RDS is created in Phase 6)
-# For now, note the placeholder <RDS-ENDPOINT> — you will update this after creating RDS
+sed -i "s|<ACCOUNT-ID>|$account_id|g" taskdef-shop.json taskdef-supplier.json
 ```
-
-Edit `taskdef-shop.json`:
-- **Line 7** (`"image"`): Replace `<IMAGE1_NAME>` with `<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shop:latest`
-- **Line 18** (`APP_DB_HOST`): Replace `<RDS-ENDPOINT>` with the actual RDS endpoint
-- **Line 51** (`executionRoleArn`): Replace `<ACCOUNT-ID>` with your AWS account ID
-- **Line 52** (`taskRoleArn`): Replace `<ACCOUNT-ID>` with your AWS account ID
 
 > **IAM Note**: Both `executionRoleArn` and `taskRoleArn` use **LabRole** — the pre-configured role in AWS Academy Learner Lab. You cannot create custom IAM roles in the Learner Lab. See [IAM Roles and Permissions](#iam-roles-and-permissions-learner-lab) for details.
 
-Edit `taskdef-supplier.json`:
-- Same replacements as above, changing `shop` to `supplier`
-- Also add the S3 bucket environment variable (for product image uploads):
-```json
-{ "name": "S3_BUCKET", "value": "b2b-marketplace-images" }
-```
+Verify the role ARNs are now concrete (no `<ACCOUNT-ID>` remaining) and that `<IMAGE1_NAME>` / `<RDS-ENDPOINT>` are still present (will be filled in later):
 
-Register the task definitions:
 ```bash
-aws ecs register-task-definition --cli-input-json file://taskdef-shop.json
-aws ecs register-task-definition --cli-input-json file://taskdef-supplier.json
+grep -E "<ACCOUNT-ID>|<IMAGE1_NAME>|<RDS-ENDPOINT>" taskdef-shop.json taskdef-supplier.json
+# Expected: lines containing <IMAGE1_NAME> and <RDS-ENDPOINT> only.
 ```
 
-Verify: In the ECS console → **Task Definitions** → Confirm `shop` and `supplier` are listed with revision 1.
+> **Note on supplier env vars**: `taskdef-supplier.json` already includes `S3_BUCKET=b2b-marketplace-images` and `AWS_REGION=us-east-1` for product image uploads — no manual edit required.
 
 ### Task 5.4: Create CloudWatch Log Groups
 
@@ -417,14 +408,40 @@ The AppSpec files are already created in the `deployment/` directory:
 
 These files tell CodeDeploy how to deploy the new task definition during blue/green deployments.
 
-### Task 5.6: Reset image placeholder and push deployment files to CodeCommit
+### Task 5.6: Create the S3 bucket for product images and CodeDeploy artifacts
 
-Keep the `image` field as `<IMAGE1_NAME>` in both task definitions. The deploy script (Phase 9) will replace this placeholder with the actual ECR image URI during deployment.
+The Supplier service uploads product images to S3, and Phase 9 stores rendered appspec files in the same bucket. Create it now so it is ready before Phase 8 service creation and Phase 9 deployments.
+
+```bash
+# 1. Create the bucket
+aws s3 mb s3://b2b-marketplace-images --region us-east-1
+
+# 2. Disable Block Public Access (product images are served publicly via S3 URLs)
+aws s3api put-public-access-block --bucket b2b-marketplace-images \
+  --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false"
+
+# 3. Attach a public-read policy (GetObject only — uploads still require IAM via LabRole)
+aws s3api put-bucket-policy --bucket b2b-marketplace-images --policy '{
+  "Version":"2012-10-17",
+  "Statement":[{
+    "Effect":"Allow",
+    "Principal":"*",
+    "Action":"s3:GetObject",
+    "Resource":"arn:aws:s3:::b2b-marketplace-images/*"
+  }]
+}'
+```
+
+> **Why now?** Phase 9 uploads CodeDeploy appspec to `s3://b2b-marketplace-images/deploy/`. If the bucket does not exist, the deployment command fails. Creating it as part of Phase 5 keeps the dependency order clean.
+
+### Task 5.7: Push deployment files to CodeCommit
+
+At this point the task definition files still contain `<IMAGE1_NAME>` and `<RDS-ENDPOINT>` placeholders — that is intentional. The deploy script in Phase 9 will use `<IMAGE1_NAME>` as a substitution marker to register a fresh revision on every deployment.
 
 ```bash
 cd ~/environment/AWS_LAB
 git add .
-git commit -m "Task definitions and AppSpec files with IMAGE1_NAME placeholder"
+git commit -m "Task definitions and AppSpec files prepared (registration deferred)"
 git push codecommit main
 ```
 
@@ -499,17 +516,26 @@ mysql -h <RDS-ENDPOINT> -u admin -plab-password b2bmarket -e "SHOW TABLES;"
 
 You should see tables: `users`, `products`, `rfqs`, `quotes`, `contracts`, `orders`, `payments`.
 
-### Task 6.4: Update task definitions with the RDS endpoint
+### Task 6.4: Substitute the RDS endpoint into task definitions
 
 ```bash
 cd ~/environment/AWS_LAB/deployment
 
+# Get the RDS endpoint dynamically (more reliable than copy-pasting)
+rds_endpoint=$(aws rds describe-db-instances \
+  --db-instance-identifier b2bmarket-db \
+  --query 'DBInstances[0].Endpoint.Address' --output text)
+echo "RDS Endpoint: $rds_endpoint"
+
 # Replace the placeholder in both task definition files
-# Use the actual RDS endpoint (e.g., b2bmarket-db.cxxxxx.us-east-1.rds.amazonaws.com)
-sed -i 's/<RDS-ENDPOINT>/b2bmarket-db.cxxxxx.us-east-1.rds.amazonaws.com/g' taskdef-shop.json taskdef-supplier.json
+sed -i "s|<RDS-ENDPOINT>|$rds_endpoint|g" taskdef-shop.json taskdef-supplier.json
+
+# Confirm: only <IMAGE1_NAME> should remain as a placeholder
+grep -E "<IMAGE1_NAME>|<RDS-ENDPOINT>|<ACCOUNT-ID>" taskdef-shop.json taskdef-supplier.json
+# Expected output: 2 lines, both showing <IMAGE1_NAME>
 ```
 
-> **Note**: Replace `b2bmarket-db.cxxxxx.us-east-1.rds.amazonaws.com` with your actual RDS endpoint.
+> **Note**: Do NOT register the task definitions yet. The image URI is still a placeholder; registration happens in Task 8.1 after both placeholders have been resolved.
 
 ---
 
@@ -616,30 +642,92 @@ The final listener rules should be:
 
 ## Phase 8: Creating Two Amazon ECS Services
 
-### Task 8.1: Update the ECS service configuration files
+### Task 8.1: Substitute the image URI and register working task definitions
 
-The service configuration files are in the `deployment/` directory. Update the placeholder values:
+By now, both `<ACCOUNT-ID>` (Task 5.3) and `<RDS-ENDPOINT>` (Task 6.4) are already resolved. The last placeholder is `<IMAGE1_NAME>`. Substitute it from ECR, then register the task definitions so Phase 8.3/8.4 can create services that actually start.
 
-Edit `create-shop-microservice-tg-two.json`:
 ```bash
 cd ~/environment/AWS_LAB/deployment
+
+account_id=$(aws sts get-caller-identity --query Account --output text)
+
+# Substitute image URIs (use :latest tag — already pushed in Task 5.1)
+sed -i "s|<IMAGE1_NAME>|$account_id.dkr.ecr.us-east-1.amazonaws.com/shop:latest|g" taskdef-shop.json
+sed -i "s|<IMAGE1_NAME>|$account_id.dkr.ecr.us-east-1.amazonaws.com/supplier:latest|g" taskdef-supplier.json
+
+# Sanity check — no placeholders should remain
+grep -E "<IMAGE1_NAME>|<RDS-ENDPOINT>|<ACCOUNT-ID>" taskdef-shop.json taskdef-supplier.json && echo "❌ STOP: placeholders remaining" || echo "✅ All placeholders resolved"
+
+# Register revision 1 of each task definition
+SHOP_REVISION=$(aws ecs register-task-definition \
+  --cli-input-json file://taskdef-shop.json \
+  --query 'taskDefinition.revision' --output text)
+echo "Shop task definition: shop:$SHOP_REVISION"
+
+SUPPLIER_REVISION=$(aws ecs register-task-definition \
+  --cli-input-json file://taskdef-supplier.json \
+  --query 'taskDefinition.revision' --output text)
+echo "Supplier task definition: supplier:$SUPPLIER_REVISION"
 ```
 
-Replace the following placeholders:
-- `<REVISION-NUMBER>` → Get from **ECS Console** → **Task Definitions** → `shop` → Note the latest revision number
-- `<ARN-shop-tg-two>` → Get from **EC2** → **Target Groups** → `shop-tg-two` → Copy the ARN
-- `<PUBLIC-SUBNET-1-ID>` and `<PUBLIC-SUBNET-2-ID>` → Get from **VPC** → **Subnets** → Copy the Public Subnet IDs (use the same subnets you chose for ALB)
-- `<B2B-ECS-SG-ID>` → Get from **EC2** → **Security Groups** → `b2b-ecs-sg` → Copy the Security Group ID
+> **⚠️ Important**: Note both revision numbers — you will paste them into the service config files in Task 8.2.
+
+Verify in the ECS Console → **Task Definitions** → confirm `shop` and `supplier` each have a revision listed with the real ECR image URI and RDS endpoint (no `<...>` literals).
+
+### Task 8.2: Update the ECS service configuration files
+
+The service configuration files are in the `deployment/` directory. Substitute the remaining placeholders:
+
+```bash
+cd ~/environment/AWS_LAB/deployment
+
+# Get reusable values
+account_id=$(aws sts get-caller-identity --query Account --output text)
+
+# Get target group ARNs
+shop_tg_two_arn=$(aws elbv2 describe-target-groups --names shop-tg-two --query 'TargetGroups[0].TargetGroupArn' --output text)
+supplier_tg_two_arn=$(aws elbv2 describe-target-groups --names supplier-tg-two --query 'TargetGroups[0].TargetGroupArn' --output text)
+
+# Get the ECS security group ID
+ecs_sg_id=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=b2b-ecs-sg" --query 'SecurityGroups[0].GroupId' --output text)
+
+# Substitute ARN, security group, and revision number into shop service config
+sed -i "s|<ARN-shop-tg-two>|$shop_tg_two_arn|g" create-shop-microservice-tg-two.json
+sed -i "s|<B2B-ECS-SG-ID>|$ecs_sg_id|g" create-shop-microservice-tg-two.json
+sed -i "s|shop:<REVISION-NUMBER>|shop:$SHOP_REVISION|g" create-shop-microservice-tg-two.json
+
+# Substitute for supplier service config
+sed -i "s|<ARN-supplier-tg-two>|$supplier_tg_two_arn|g" create-supplier-microservice-tg-two.json
+sed -i "s|<B2B-ECS-SG-ID>|$ecs_sg_id|g" create-supplier-microservice-tg-two.json
+sed -i "s|supplier:<REVISION-NUMBER>|supplier:$SUPPLIER_REVISION|g" create-supplier-microservice-tg-two.json
+```
+
+Manually replace the subnet placeholders (no shared CLI helper for this — pick the same 2 public subnets you used for the ALB):
+
+```bash
+# Get the public subnet IDs from your VPC (replace <VPC-ID> with your VPC ID)
+aws ec2 describe-subnets \
+  --filters "Name=vpc-id,Values=<VPC-ID>" "Name=map-public-ip-on-launch,Values=true" \
+  --query 'Subnets[*].[SubnetId,AvailabilityZone,CidrBlock]' --output table
+
+# Then sed-replace (use the same two subnets for both services)
+sed -i "s|<PUBLIC-SUBNET-1-ID>|subnet-xxxxxxxx|g" create-shop-microservice-tg-two.json create-supplier-microservice-tg-two.json
+sed -i "s|<PUBLIC-SUBNET-2-ID>|subnet-yyyyyyyy|g" create-shop-microservice-tg-two.json create-supplier-microservice-tg-two.json
+```
+
+> **⚠️ Subnet requirement**: The chosen subnets MUST have a route to an Internet Gateway (route table contains `0.0.0.0/0 → igw-...`). Without IGW access, ECS tasks cannot pull images from ECR and will fail to start. Verify in **VPC → Route Tables → Routes**.
+
+Sanity check — no `<...>` placeholders should remain:
+
+```bash
+grep -E "<[A-Z-]+>" create-shop-microservice-tg-two.json create-supplier-microservice-tg-two.json && echo "❌ STOP: placeholders remaining" || echo "✅ All placeholders resolved"
+```
 
 > **⚠️ Important**: The JSON files have `"deploymentController": {"type": "CODE_DEPLOY"}`. If you plan to use the **Manual ECS Rolling Deployment** alternative (Phase 9), change this to `"type": "ECS"` in both JSON files **before creating the services**. You cannot change the deployment controller after service creation.
 
-Edit `create-supplier-microservice-tg-two.json`:
-- Same subnet and security group values
-- Change ARN to `supplier-tg-two`
-- Change containerName to `supplier`
-- Change taskDefinition to `supplier:<REVISION-NUMBER>`
+> **Note on health check grace period**: Both service configs include `"healthCheckGracePeriodSeconds": 90`. This gives the Node.js app + MySQL pool ~90 seconds to start up before ECS evaluates ALB health checks — without this, the first task is killed by ECS before it can become healthy and the service enters a restart loop.
 
-### Task 8.2: Create the ECS service for the Shop microservice
+### Task 8.3: Create the ECS service for the Shop microservice
 
 ```bash
 cd ~/environment/AWS_LAB/deployment
@@ -650,9 +738,10 @@ aws ecs create-service --service-name shop-service \
 Verify:
 1. Open **ECS Console** → **Clusters** → `b2b-marketplace` → **Services**
 2. Confirm `shop-service` is listed with **Running count: 1**
-3. Check **Target Groups** → `shop-tg-two` → Confirm 1 healthy target is registered
+3. Wait ~2-3 minutes (cold start) then check **Target Groups** → `shop-tg-two` → Confirm 1 healthy target is registered
+4. Check **CloudWatch Logs → /ecs/shop** for `[Shop Service] Running on port 8080` — proves the container actually started
 
-### Task 8.3: Create the ECS service for the Supplier microservice
+### Task 8.4: Create the ECS service for the Supplier microservice
 
 ```bash
 aws ecs create-service --service-name supplier-service \
@@ -661,14 +750,61 @@ aws ecs create-service --service-name supplier-service \
 
 Verify:
 1. Confirm `supplier-service` is listed in the ECS cluster
-2. Check `supplier-tg-two` has 1 healthy target
+2. After ~2-3 minutes, check `supplier-tg-two` has 1 healthy target
+3. Check **CloudWatch Logs → /ecs/supplier** for `[Supplier Service] Running on port 8080`
 
-### Task 8.4: Test the application via ALB
+### Task 8.5: Test the application via ALB
 
 1. Copy the ALB DNS Name from **EC2** → **Load Balancers** → `b2b-alb`
 2. Open `http://<ALB-DNS-Name>/` in a browser → Should show the Shop login page
 3. Open `http://<ALB-DNS-Name>/admin/login` → Should show the Supplier login page
-4. Open `http://<ALB-DNS-Name>/health` → Should return `{"status":"ok"}`
+4. Open `http://<ALB-DNS-Name>/health` → Should return `{"status":"ok","service":"shop",...}`
+5. Open `http://<ALB-DNS-Name>/admin/health` → does NOT exist; the supplier health check is internal at the task IP, not exposed via ALB
+
+#### Troubleshooting Task 8.5: ALB returns 503 / connection times out
+
+If the page does not load, check in this order:
+
+```bash
+# 1. Are the ECS tasks actually running?
+aws ecs describe-services --cluster b2b-marketplace \
+  --services shop-service supplier-service \
+  --query 'services[*].[serviceName,runningCount,pendingCount,desiredCount]' --output table
+
+# 2. Why did stopped tasks die?
+aws ecs list-tasks --cluster b2b-marketplace --desired-status STOPPED \
+  --service-name shop-service --query 'taskArns[0]' --output text
+
+aws ecs describe-tasks --cluster b2b-marketplace \
+  --tasks <TASK-ARN-FROM-ABOVE> \
+  --query 'tasks[0].[stoppedReason,containers[0].exitCode,containers[0].reason]' --output table
+
+# 3. Are ALB targets healthy?
+aws elbv2 describe-target-health --target-group-arn $shop_tg_two_arn \
+  --query 'TargetHealthDescriptions[*].[Target.Id,TargetHealth.State,TargetHealth.Reason,TargetHealth.Description]' --output table
+
+# 4. Container startup logs
+aws logs tail /ecs/shop --since 10m --follow
+aws logs tail /ecs/supplier --since 10m --follow
+```
+
+Common root causes (matched to symptoms):
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `CannotPullContainerError` in stopped task reason | Image URI still `<IMAGE1_NAME>`, OR subnet has no IGW route | Re-check Task 8.1 substitution, verify subnet route table |
+| `ResourceInitializationError` connecting to RDS | RDS not started, RDS SG missing inbound from ECS SG | Start RDS, add inbound rule per Task 7.1 |
+| Target health: `unhealthy` with reason `Health checks failed` | Health check grace period too short, or `/health` not yet responding | Confirm `"healthCheckGracePeriodSeconds": 90` in service config; wait 2 more minutes |
+| `Target.Timeout` (no response) | ECS SG inbound 8080 missing from ALB SG | Re-check Task 7.1 — `b2b-ecs-sg` inbound TCP 8080 from `b2b-alb-sg` |
+| 503 only on `/admin/*` | Listener rule missing or supplier task not healthy | Phase 7.4 listener rule priority 1 path `/admin/*` → `supplier-tg-two` |
+| 502 Bad Gateway intermittent | Container crashing on first request | Check `/ecs/<service>` logs for stack traces |
+
+To force a fresh deployment after fixing config:
+
+```bash
+aws ecs update-service --cluster b2b-marketplace --service shop-service --force-new-deployment
+aws ecs update-service --cluster b2b-marketplace --service supplier-service --force-new-deployment
+```
 
 ---
 
@@ -750,69 +886,57 @@ Repeat the same steps (console or CLI) with:
 
 > **⚠️ Learner Lab Note**: CodePipeline is **not available** in Learner Lab due to IAM restrictions. Instead, we trigger CodeDeploy blue/green deployments **directly from the CLI**. This achieves the same blue/green deployment result — the only difference is the trigger is manual instead of automated by a pipeline.
 
+> **Why a fresh revision is needed each time**: ECS only re-pulls an image when the task definition revision changes. The `:latest` tag alone is not enough — registering a new revision (even with the same image URI) is what tells ECS "go pull again." For the appspec, we use a temp copy because `<TASK_DEFINITION>` must be replaced with the new revision ARN per deployment without destroying the original placeholder.
+
 **Deploy the Shop microservice:**
 
 ```bash
 cd ~/environment/AWS_LAB
 
-# Get account ID and set variables
-account_id=$(aws sts get-caller-identity | grep Account | cut -d '"' -f4)
-
-# Step 1: Update the task definition with the actual ECR image URI
-# (Replace <IMAGE1_NAME> with the real image URI)
-sed -i "s|<IMAGE1_NAME>|$account_id.dkr.ecr.us-east-1.amazonaws.com/shop:latest|g" deployment/taskdef-shop.json
-
-# Step 2: Register the updated task definition and get the new revision ARN
+# Step 1: Register a fresh task definition revision pointing at the latest ECR image
 SHOP_TASKDEF_ARN=$(aws ecs register-task-definition \
   --cli-input-json file://deployment/taskdef-shop.json \
   --query 'taskDefinition.taskDefinitionArn' --output text)
 echo "Shop Task Definition ARN: $SHOP_TASKDEF_ARN"
 
-# Step 3: Update the appspec to use the new task definition ARN
-sed -i "s|<TASK_DEFINITION>|$SHOP_TASKDEF_ARN|g" deployment/appspec-shop.yaml
+# Step 2: Render appspec with the new task def ARN (use a temp copy so the original keeps the placeholder)
+cp deployment/appspec-shop.yaml /tmp/appspec-shop-deploy.yaml
+sed -i "s|<TASK_DEFINITION>|$SHOP_TASKDEF_ARN|g" /tmp/appspec-shop-deploy.yaml
 
-# Step 4: Create the CodeDeploy deployment
+# Step 3: Upload the rendered appspec to S3 and trigger CodeDeploy
+aws s3 cp /tmp/appspec-shop-deploy.yaml s3://b2b-marketplace-images/deploy/appspec-shop.yaml
+
 aws deploy create-deployment \
   --application-name b2b-marketplace \
   --deployment-group-name b2b-shop-dg \
-  --revision '{"revisionType":"AppSpecContent","appSpecContent":{"content":"'"$(cat deployment/appspec-shop.yaml | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" | tr -d '"')"'"}}' \
+  --s3-location bucket=b2b-marketplace-images,key=deploy/appspec-shop.yaml,bundleType=YAML \
   --description "Deploy shop service via CLI"
 ```
-
-> **Note**: If the `--revision` inline approach is too complex, you can upload the AppSpec to S3 instead:
-> ```bash
-> # Upload appspec to S3
-> aws s3 cp deployment/appspec-shop.yaml s3://b2b-marketplace-images/deploy/appspec-shop.yaml
->
-> # Create deployment from S3
-> aws deploy create-deployment \
->   --application-name b2b-marketplace \
->   --deployment-group-name b2b-shop-dg \
->   --s3-location bucket=b2b-marketplace-images,key=deploy/appspec-shop.yaml,bundleType=YAML
-> ```
 
 **Deploy the Supplier microservice:**
 
 ```bash
-# Step 1: Update task definition with ECR image URI
-sed -i "s|<IMAGE1_NAME>|$account_id.dkr.ecr.us-east-1.amazonaws.com/supplier:latest|g" deployment/taskdef-supplier.json
-
-# Step 2: Register and get revision ARN
+# Step 1: Register a fresh task definition revision
 SUPPLIER_TASKDEF_ARN=$(aws ecs register-task-definition \
   --cli-input-json file://deployment/taskdef-supplier.json \
   --query 'taskDefinition.taskDefinitionArn' --output text)
 echo "Supplier Task Definition ARN: $SUPPLIER_TASKDEF_ARN"
 
-# Step 3: Update appspec
-sed -i "s|<TASK_DEFINITION>|$SUPPLIER_TASKDEF_ARN|g" deployment/appspec-supplier.yaml
+# Step 2: Render appspec via temp copy
+cp deployment/appspec-supplier.yaml /tmp/appspec-supplier-deploy.yaml
+sed -i "s|<TASK_DEFINITION>|$SUPPLIER_TASKDEF_ARN|g" /tmp/appspec-supplier-deploy.yaml
 
-# Step 4: Create deployment
+# Step 3: Upload + trigger CodeDeploy
+aws s3 cp /tmp/appspec-supplier-deploy.yaml s3://b2b-marketplace-images/deploy/appspec-supplier.yaml
+
 aws deploy create-deployment \
   --application-name b2b-marketplace \
   --deployment-group-name b2b-supplier-dg \
-  --revision '{"revisionType":"AppSpecContent","appSpecContent":{"content":"'"$(cat deployment/appspec-supplier.yaml | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" | tr -d '"')"'"}}' \
+  --s3-location bucket=b2b-marketplace-images,key=deploy/appspec-supplier.yaml,bundleType=YAML \
   --description "Deploy supplier service via CLI"
 ```
+
+> **Tip**: The S3 bucket `b2b-marketplace-images` should already exist (created in Task 5.6). If not, re-run the commands from that task before retrying the deployment.
 
 ### Task 9.5: Monitor the CodeDeploy deployment
 
@@ -1431,24 +1555,11 @@ aws codecommit delete-repository --repository-name b2b-marketplace
 
 ---
 
-## S3 Bucket Setup for Product Images
+## S3 Bucket Reference
 
-```bash
-# Create bucket
-aws s3 mb s3://b2b-marketplace-images --region us-east-1
+The S3 bucket `b2b-marketplace-images` is created in [Task 5.6](#task-56-create-the-s3-bucket-for-product-images-and-codedeploy-artifacts). It serves two purposes:
 
-# Disable block public access (required for public product images)
-aws s3api put-public-access-block --bucket b2b-marketplace-images \
-  --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false"
+1. **Product image uploads** — Supplier service uses it via `@aws-sdk/client-s3` (configured by `S3_BUCKET` env var in `taskdef-supplier.json`)
+2. **CodeDeploy appspec storage** — Phase 9 deployments upload rendered appspec YAML to `s3://b2b-marketplace-images/deploy/`
 
-# Set public read policy
-aws s3api put-bucket-policy --bucket b2b-marketplace-images --policy '{
-  "Version":"2012-10-17",
-  "Statement":[{
-    "Effect":"Allow",
-    "Principal":"*",
-    "Action":"s3:GetObject",
-    "Resource":"arn:aws:s3:::b2b-marketplace-images/*"
-  }]
-}'
-```
+If the bucket was deleted or you need to recreate it, re-run the commands in Task 5.6.

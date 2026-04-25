@@ -32,6 +32,14 @@
         {
           "name": "APP_DB_PORT",
           "value": "3306"
+        },
+        {
+          "name": "S3_BUCKET",
+          "value": "b2b-marketplace-images"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "us-east-1"
         }
       ],
       "essential": true,

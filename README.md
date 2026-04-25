@@ -231,8 +231,8 @@ Stage 2: DEPLOY (CLI → CodeDeploy → ECS Blue/Green)
 |---|---|
 | `deployment/appspec-shop.yaml` | CodeDeploy ECS deployment spec for Shop |
 | `deployment/appspec-supplier.yaml` | CodeDeploy ECS deployment spec for Supplier |
-| `deployment/taskdef-shop.json` | ECS task definition for Shop (image placeholder: `<IMAGE1_NAME>`) |
-| `deployment/taskdef-supplier.json` | ECS task definition for Supplier (image placeholder: `<IMAGE1_NAME>`) |
+| `deployment/taskdef-shop.json` | ECS task definition for Shop (placeholders: `<IMAGE1_NAME>`, `<RDS-ENDPOINT>`, `<ACCOUNT-ID>` resolved during Phases 5.3 → 6.4 → 8.1) |
+| `deployment/taskdef-supplier.json` | ECS task definition for Supplier (same placeholders + `S3_BUCKET` env var preset) |
 | `deployment/create-shop-microservice-tg-two.json` | ECS service config with CODE_DEPLOY controller |
 | `deployment/create-supplier-microservice-tg-two.json` | ECS service config with CODE_DEPLOY controller |
 
@@ -244,16 +244,28 @@ cd microservices/shop
 docker build -t shop .
 
 # 2. Tag and push to ECR
-account_id=$(aws sts get-caller-identity | grep Account | cut -d '"' -f4)
+account_id=$(aws sts get-caller-identity --query Account --output text)
 docker tag shop:latest $account_id.dkr.ecr.us-east-1.amazonaws.com/shop:latest
 docker push $account_id.dkr.ecr.us-east-1.amazonaws.com/shop:latest
 
-# 3. Trigger CodeDeploy blue/green deployment via CLI
+# 3. Register a fresh ECS task definition revision (ECS only re-pulls on revision change)
+SHOP_TASKDEF_ARN=$(aws ecs register-task-definition \
+  --cli-input-json file://deployment/taskdef-shop.json \
+  --query 'taskDefinition.taskDefinitionArn' --output text)
+
+# 4. Render appspec with the new task def ARN (use temp copy to keep placeholder)
+cp deployment/appspec-shop.yaml /tmp/appspec-shop-deploy.yaml
+sed -i "s|<TASK_DEFINITION>|$SHOP_TASKDEF_ARN|g" /tmp/appspec-shop-deploy.yaml
+
+# 5. Upload appspec to S3 + trigger CodeDeploy blue/green deployment
+aws s3 cp /tmp/appspec-shop-deploy.yaml s3://b2b-marketplace-images/deploy/appspec-shop.yaml
 aws deploy create-deployment \
   --application-name b2b-marketplace \
-  --deployment-group-name shop-deployment-group \
-  --revision '{"revisionType":"AppSpecContent","appSpecContent":{"content":"{...}"}}'
+  --deployment-group-name b2b-shop-dg \
+  --s3-location bucket=b2b-marketplace-images,key=deploy/appspec-shop.yaml,bundleType=YAML
 ```
+
+The `deploy.sh` helper script in the project root automates these 5 steps for either service: `./deploy.sh shop` or `./deploy.sh supplier`.
 
 ---
 
@@ -263,7 +275,7 @@ aws deploy create-deployment \
 
 | AWS Service | Purpose | Configuration |
 |---|---|---|
-| Amazon ECS (Fargate) | Container orchestration | 2 services, 1 task each, 0.25 vCPU / 512MB RAM |
+| Amazon ECS (Fargate) | Container orchestration | 2 services, 1 task each, 0.25 vCPU / 512MB RAM, `healthCheckGracePeriodSeconds: 90` to avoid premature kill during cold start |
 | Amazon ECR | Docker image registry | 2 private repositories (shop, supplier) |
 | Application Load Balancer | Traffic routing & health checks | Path-based routing (`/admin/*` → Supplier, default → Shop), 4 target groups for blue/green |
 | Amazon RDS (MySQL 8.0) | Managed database | db.c6gd.medium, Single-AZ, 20GB gp3 |
@@ -277,8 +289,9 @@ aws deploy create-deployment \
 ### Network Configuration
 
 - VPC with public subnets (no NAT Gateway to reduce cost)
+- Public subnets must have a default route (`0.0.0.0/0`) to an Internet Gateway so ECS tasks can pull images from ECR
 - ECS tasks use `assignPublicIp: ENABLED` for ECR image pulls
-- Security groups restrict RDS access to ECS tasks only
+- Security groups restrict RDS access to ECS tasks only (3-tier: ALB → ECS → RDS)
 - ALB is internet-facing on port 80
 
 ---

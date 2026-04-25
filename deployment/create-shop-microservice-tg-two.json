@@ -12,6 +12,7 @@
   "desiredCount": 1,
   "launchType": "FARGATE",
   "platformVersion": "LATEST",
+  "healthCheckGracePeriodSeconds": 90,
   "networkConfiguration": {
     "awsvpcConfiguration": {
       "subnets": [
