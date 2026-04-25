@@ -1,7 +1,8 @@
 const Order = require("../models/order.model");
 
 exports.findAll = (req, res) => {
-  Order.getAll((err, data) => {
+  const supplierId = req.session.user.id;
+  Order.getBySupplierId(supplierId, (err, data) => {
     if (err) { res.status(500).render("error", { message: "Error retrieving orders" }); return; }
     res.render("order-list", { orders: data });
   });
@@ -9,10 +10,11 @@ exports.findAll = (req, res) => {
 
 exports.findOne = (req, res) => {
   const id = parseInt(req.params.id);
+  const supplierId = req.session.user.id;
   if (isNaN(id) || id < 1) {
     return res.status(400).render("error", { message: "Invalid order ID" });
   }
-  Order.findById(id, (err, data) => {
+  Order.findById(id, supplierId, (err, data) => {
     if (err) { res.status(404).render("error", { message: "Order not found" }); return; }
     res.render("order-detail", { order: data });
   });
@@ -20,10 +22,11 @@ exports.findOne = (req, res) => {
 
 exports.confirm = (req, res) => {
   const id = parseInt(req.params.id);
+  const supplierId = req.session.user.id;
   if (isNaN(id) || id < 1) {
     return res.status(400).render("error", { message: "Invalid order ID" });
   }
-  Order.confirm(id, (err) => {
+  Order.confirm(id, supplierId, (err) => {
     if (err) { res.status(500).render("error", { message: "Cannot confirm order" }); return; }
     res.redirect("/admin/orders/" + id);
   });
@@ -31,10 +34,11 @@ exports.confirm = (req, res) => {
 
 exports.cancel = (req, res) => {
   const id = parseInt(req.params.id);
+  const supplierId = req.session.user.id;
   if (isNaN(id) || id < 1) {
     return res.status(400).render("error", { message: "Invalid order ID" });
   }
-  Order.cancel(id, (err, data) => {
+  Order.cancel(id, supplierId, (err, data) => {
     if (err) { res.status(500).render("error", { message: "Cannot cancel order" }); return; }
     res.redirect("/admin/orders/" + id);
   });

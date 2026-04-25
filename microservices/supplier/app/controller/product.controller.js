@@ -2,7 +2,8 @@ const Product = require("../models/product.model");
 const { upload, uploadToS3, deleteFromS3 } = require("../config/s3");
 
 exports.findAll = (req, res) => {
-  Product.getAll((err, data) => {
+  const supplierId = req.session.user.id;
+  Product.getAll(supplierId, (err, data) => {
     if (err) { res.status(500).render("error", { message: "Error retrieving products" }); return; }
     res.render("product-list", { products: data });
   });
@@ -59,10 +60,11 @@ exports.create = [
 
 exports.editForm = (req, res) => {
   const id = parseInt(req.params.id);
+  const supplierId = req.session.user.id;
   if (isNaN(id) || id < 1) {
     return res.status(400).render("error", { message: "Invalid product ID" });
   }
-  Product.findById(id, (err, data) => {
+  Product.findById(id, supplierId, (err, data) => {
     if (err) { res.status(404).render("error", { message: "Product not found" }); return; }
     res.render("product-update", { product: data });
   });
@@ -99,7 +101,8 @@ exports.update = [
         }
       }
 
-      Product.updateById(id, {
+      const supplierId = req.session.user.id;
+      Product.updateById(id, supplierId, {
         name: name,
         description: (req.body.description || "").replace(/<[^>]*>/g, "").substring(0, 2000),
         price: price,
@@ -119,14 +122,15 @@ exports.update = [
 
 exports.remove = (req, res) => {
   const id = parseInt(req.params.id);
+  const supplierId = req.session.user.id;
   if (isNaN(id) || id < 1) {
     return res.status(400).render("error", { message: "Invalid product ID" });
   }
   // Get product first to delete S3 image
-  Product.findById(id, (err, product) => {
+  Product.findById(id, supplierId, (err, product) => {
     if (err) { res.status(500).render("error", { message: "Error deleting product" }); return; }
 
-    Product.remove(id, async (err) => {
+    Product.remove(id, supplierId, async (err) => {
       if (err) { res.status(500).render("error", { message: "Error deleting product" }); return; }
       // Delete image from S3
       if (product && product.image_url) {

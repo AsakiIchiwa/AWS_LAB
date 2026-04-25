@@ -202,7 +202,7 @@ Step 8: ORDER COMPLETE
 
 ## CI/CD Pipeline
 
-The project uses AWS developer tools to implement a continuous deployment pipeline. **CodeBuild is not available in AWS Academy Learner Lab**, so Docker images are built and pushed to ECR manually from Cloud9. The pipeline is triggered automatically when a new image is pushed to ECR.
+The project uses AWS developer tools to implement a continuous deployment pipeline. **CodeBuild is not available in AWS Academy Learner Lab**, so Docker images are built and pushed to ECR manually from Cloud9. CodeDeploy blue/green deployments are then triggered manually via AWS CLI.
 
 ### Pipeline Stages
 
@@ -265,7 +265,7 @@ aws deploy create-deployment \
   --s3-location bucket=b2b-marketplace-images,key=deploy/appspec-shop.yaml,bundleType=YAML
 ```
 
-The `deploy.sh` helper script in the project root automates these 5 steps for either service: `./deploy.sh shop` or `./deploy.sh supplier`.
+> **Note:** The above 5 steps can be scripted into a `deploy.sh` helper if desired. Repeat the same process for the supplier service by replacing `shop` with `supplier` in the commands above.
 
 ---
 

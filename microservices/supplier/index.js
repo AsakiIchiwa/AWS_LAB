@@ -85,6 +85,7 @@ app.use(session({
 
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
+  res.locals.shopUrl = process.env.SHOP_URL || "/";
   next();
 });
 

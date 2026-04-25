@@ -10,8 +10,9 @@ exports.findAll = (req, res) => {
 
 exports.findOne = (req, res) => {
   const id = parseInt(req.params.id);
+  const supplierId = req.session.user.id;
   if (isNaN(id) || id < 1) return res.status(400).render("error", { message: "Invalid RFQ ID" });
-  RFQ.findById(id, (err, data) => {
+  RFQ.findById(id, supplierId, (err, data) => {
     if (err) {
       if (err.kind === "not_found") return res.status(404).render("error", { message: "RFQ not found" });
       return res.status(500).render("error", { message: "Error retrieving RFQ" });
@@ -35,7 +36,11 @@ exports.submitQuote = (req, res) => {
   const note = (req.body.note || "").replace(/<[^>]*>/g, "").substring(0, 500);
 
   RFQ.submitQuote(rfqId, { supplier_id: supplierId, unit_price: unitPrice, moq, delivery_days: deliveryDays, note }, (err, data) => {
-    if (err) return res.status(500).render("error", { message: "Error submitting quote" });
+    if (err) {
+      if (err.kind === "not_found_or_already_quoted") return res.status(403).render("error", { message: "RFQ not found, not yours, or already quoted" });
+      if (err.kind === "duplicate_quote") return res.status(409).render("error", { message: "You have already submitted a quote for this RFQ" });
+      return res.status(500).render("error", { message: "Error submitting quote" });
+    }
     res.redirect("/admin/rfqs/" + rfqId);
   });
 };

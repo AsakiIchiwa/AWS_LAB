@@ -18,7 +18,7 @@ Contract.findByShopId = (shopId, result) => {
   );
 };
 
-Contract.findById = (id, result) => {
+Contract.findById = (id, shopId, result) => {
   pool.query(
     `SELECT c.*, p.name as product_name, p.image_url, p.description as product_desc,
      u.full_name as supplier_name, s.full_name as shop_name
@@ -26,8 +26,8 @@ Contract.findById = (id, result) => {
      JOIN products p ON c.product_id = p.id
      JOIN users u ON c.supplier_id = u.id
      JOIN users s ON c.shop_id = s.id
-     WHERE c.id = ?`,
-    [id],
+     WHERE c.id = ? AND c.shop_id = ?`,
+    [id, shopId],
     (err, res) => {
       if (err) { result(err, null); return; }
       if (res.length) { result(null, res[0]); return; }
@@ -37,24 +37,24 @@ Contract.findById = (id, result) => {
 };
 
 // Create order from contract
-Contract.createOrder = (contractId, result) => {
+Contract.createOrder = (contractId, shopId, result) => {
   pool.getConnection((err, connection) => {
     if (err) { result(err, null); return; }
     connection.beginTransaction((err) => {
       if (err) { connection.release(); result(err, null); return; }
 
-      connection.query("SELECT * FROM contracts WHERE id = ? AND status = 'confirmed'", [contractId], (err, res) => {
+      connection.query("SELECT * FROM contracts WHERE id = ? AND shop_id = ? AND status = 'confirmed'", [contractId, shopId], (err, res) => {
         if (err) { connection.rollback(() => connection.release()); result(err, null); return; }
-        if (!res.length) { connection.release(); result({ kind: "not_confirmed" }, null); return; }
+        if (!res.length) { connection.rollback(() => connection.release()); result({ kind: "not_confirmed" }, null); return; }
 
         const contract = res[0];
 
-        // Check stock
-        connection.query("SELECT stock FROM products WHERE id = ?", [contract.product_id], (err, pRes) => {
+        // Check stock with row lock
+        connection.query("SELECT stock FROM products WHERE id = ? FOR UPDATE", [contract.product_id], (err, pRes) => {
           if (err) { connection.rollback(() => connection.release()); result(err, null); return; }
-          if (pRes[0].stock < contract.quantity) {
-            connection.release();
-            result({ kind: "insufficient_stock", available: pRes[0].stock }, null);
+          if (!pRes.length || pRes[0].stock < contract.quantity) {
+            connection.rollback(() => connection.release());
+            result({ kind: "insufficient_stock", available: pRes.length ? pRes[0].stock : 0 }, null);
             return;
           }
 
@@ -65,9 +65,14 @@ Contract.createOrder = (contractId, result) => {
             (err, oRes) => {
               if (err) { connection.rollback(() => connection.release()); result(err, null); return; }
 
-              // Deduct stock
-              connection.query("UPDATE products SET stock = stock - ? WHERE id = ?", [contract.quantity, contract.product_id], (err) => {
+              // Deduct stock with conditional check
+              connection.query("UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?", [contract.quantity, contract.product_id, contract.quantity], (err, updateRes) => {
                 if (err) { connection.rollback(() => connection.release()); result(err, null); return; }
+                if (updateRes.affectedRows === 0) {
+                  connection.rollback(() => connection.release());
+                  result({ kind: "insufficient_stock", available: 0 }, null);
+                  return;
+                }
 
                 connection.commit((err) => {
                   if (err) { connection.rollback(() => connection.release()); result(err, null); return; }

@@ -22,7 +22,8 @@ exports.login = (req, res) => {
     req.session.user = user;
     // Role-based redirect: supplier/admin → supplier panel, shop → shop home
     if (user.role === "supplier" || user.role === "admin") {
-      return res.redirect("/admin/");
+      const supplierUrl = process.env.SUPPLIER_URL || "/admin/";
+      return res.redirect(supplierUrl);
     }
     res.redirect("/");
   });

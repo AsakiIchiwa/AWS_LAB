@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   full_name VARCHAR(255),
   role ENUM('shop', 'supplier', 'admin') DEFAULT 'shop',
-  status ENUM('pending', 'approved', 'rejected') DEFAULT 'approved',
+  status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

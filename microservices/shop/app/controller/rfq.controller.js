@@ -10,8 +10,9 @@ exports.findAll = (req, res) => {
 
 exports.findOne = (req, res) => {
   const id = parseInt(req.params.id);
+  const shopId = req.session.user.id;
   if (isNaN(id) || id < 1) return res.status(400).render("error", { message: "Invalid RFQ ID" });
-  RFQ.findById(id, (err, data) => {
+  RFQ.findById(id, shopId, (err, data) => {
     if (err) {
       if (err.kind === "not_found") return res.status(404).render("error", { message: "RFQ not found" });
       return res.status(500).render("error", { message: "Error retrieving RFQ" });
@@ -54,9 +55,10 @@ exports.create = (req, res) => {
 exports.acceptQuote = (req, res) => {
   const rfqId = parseInt(req.params.id);
   const quoteId = parseInt(req.params.quoteId);
+  const shopId = req.session.user.id;
   if (isNaN(rfqId) || isNaN(quoteId)) return res.status(400).render("error", { message: "Invalid IDs" });
 
-  RFQ.acceptQuote(rfqId, quoteId, (err, data) => {
+  RFQ.acceptQuote(rfqId, quoteId, shopId, (err, data) => {
     if (err) {
       if (err.kind === "not_found") return res.status(404).render("error", { message: "Quote not found" });
       return res.status(500).render("error", { message: "Error accepting quote" });
@@ -68,9 +70,10 @@ exports.acceptQuote = (req, res) => {
 exports.rejectQuote = (req, res) => {
   const rfqId = parseInt(req.params.id);
   const quoteId = parseInt(req.params.quoteId);
+  const shopId = req.session.user.id;
   if (isNaN(rfqId) || isNaN(quoteId)) return res.status(400).render("error", { message: "Invalid IDs" });
 
-  RFQ.rejectQuote(rfqId, quoteId, (err) => {
+  RFQ.rejectQuote(rfqId, quoteId, shopId, (err) => {
     if (err) return res.status(500).render("error", { message: "Error rejecting quote" });
     res.redirect("/rfqs");
   });

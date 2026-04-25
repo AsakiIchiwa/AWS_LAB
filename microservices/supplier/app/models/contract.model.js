@@ -18,7 +18,7 @@ Contract.findBySupplierId = (supplierId, result) => {
   );
 };
 
-Contract.findById = (id, result) => {
+Contract.findById = (id, supplierId, result) => {
   pool.query(
     `SELECT c.*, p.name as product_name, p.image_url, p.description as product_desc,
      s.full_name as shop_name, u.full_name as supplier_name
@@ -26,8 +26,8 @@ Contract.findById = (id, result) => {
      JOIN products p ON c.product_id = p.id
      JOIN users s ON c.shop_id = s.id
      JOIN users u ON c.supplier_id = u.id
-     WHERE c.id = ?`,
-    [id],
+     WHERE c.id = ? AND c.supplier_id = ?`,
+    [id, supplierId],
     (err, res) => {
       if (err) { result(err, null); return; }
       if (res.length) { result(null, res[0]); return; }
@@ -36,16 +36,16 @@ Contract.findById = (id, result) => {
   );
 };
 
-Contract.confirm = (id, result) => {
-  pool.query("UPDATE contracts SET status = 'confirmed' WHERE id = ? AND status = 'draft'", [id], (err, res) => {
+Contract.confirm = (id, supplierId, result) => {
+  pool.query("UPDATE contracts SET status = 'confirmed' WHERE id = ? AND supplier_id = ? AND status = 'draft'", [id, supplierId], (err, res) => {
     if (err) { result(err, null); return; }
     if (res.affectedRows == 0) { result({ kind: "not_found_or_invalid" }, null); return; }
     result(null, { id, status: "confirmed" });
   });
 };
 
-Contract.cancel = (id, result) => {
-  pool.query("UPDATE contracts SET status = 'cancelled' WHERE id = ? AND status IN ('draft','confirmed')", [id], (err, res) => {
+Contract.cancel = (id, supplierId, result) => {
+  pool.query("UPDATE contracts SET status = 'cancelled' WHERE id = ? AND supplier_id = ? AND status IN ('draft','confirmed')", [id, supplierId], (err, res) => {
     if (err) { result(err, null); return; }
     if (res.affectedRows == 0) { result({ kind: "not_found_or_invalid" }, null); return; }
     result(null, { id, status: "cancelled" });

@@ -10,8 +10,9 @@ exports.findAll = (req, res) => {
 
 exports.findOne = (req, res) => {
   const id = parseInt(req.params.id);
+  const shopId = req.session.user.id;
   if (isNaN(id) || id < 1) return res.status(400).render("error", { message: "Invalid contract ID" });
-  Contract.findById(id, (err, data) => {
+  Contract.findById(id, shopId, (err, data) => {
     if (err) {
       if (err.kind === "not_found") return res.status(404).render("error", { message: "Contract not found" });
       return res.status(500).render("error", { message: "Error retrieving contract" });
@@ -22,8 +23,9 @@ exports.findOne = (req, res) => {
 
 exports.createOrder = (req, res) => {
   const id = parseInt(req.params.id);
+  const shopId = req.session.user.id;
   if (isNaN(id) || id < 1) return res.status(400).render("error", { message: "Invalid contract ID" });
-  Contract.createOrder(id, (err, data) => {
+  Contract.createOrder(id, shopId, (err, data) => {
     if (err) {
       if (err.kind === "not_confirmed") return res.render("error", { message: "Contract must be confirmed by supplier first" });
       if (err.kind === "insufficient_stock") return res.render("error", { message: `Insufficient stock. Available: ${err.available}` });

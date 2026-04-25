@@ -10,8 +10,9 @@ exports.findAll = (req, res) => {
 
 exports.findOne = (req, res) => {
   const id = parseInt(req.params.id);
+  const supplierId = req.session.user.id;
   if (isNaN(id) || id < 1) return res.status(400).render("error", { message: "Invalid contract ID" });
-  Contract.findById(id, (err, data) => {
+  Contract.findById(id, supplierId, (err, data) => {
     if (err) {
       if (err.kind === "not_found") return res.status(404).render("error", { message: "Contract not found" });
       return res.status(500).render("error", { message: "Error retrieving contract" });
@@ -22,8 +23,9 @@ exports.findOne = (req, res) => {
 
 exports.confirm = (req, res) => {
   const id = parseInt(req.params.id);
+  const supplierId = req.session.user.id;
   if (isNaN(id) || id < 1) return res.status(400).render("error", { message: "Invalid contract ID" });
-  Contract.confirm(id, (err) => {
+  Contract.confirm(id, supplierId, (err) => {
     if (err) return res.status(500).render("error", { message: "Error confirming contract" });
     res.redirect("/admin/contracts/" + id);
   });
@@ -31,8 +33,9 @@ exports.confirm = (req, res) => {
 
 exports.cancel = (req, res) => {
   const id = parseInt(req.params.id);
+  const supplierId = req.session.user.id;
   if (isNaN(id) || id < 1) return res.status(400).render("error", { message: "Invalid contract ID" });
-  Contract.cancel(id, (err) => {
+  Contract.cancel(id, supplierId, (err) => {
     if (err) return res.status(500).render("error", { message: "Error cancelling contract" });
     res.redirect("/admin/contracts");
   });

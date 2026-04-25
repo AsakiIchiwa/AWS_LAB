@@ -82,9 +82,10 @@ app.use(session({
   }
 }));
 
-// Make user available in all views
+// Make user and cross-service URLs available in all views
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
+  res.locals.supplierUrl = process.env.SUPPLIER_URL || "/admin/";
   next();
 });
 
@@ -104,6 +105,9 @@ app.get("/health", (req, res) => {
 function requireAuth(req, res, next) {
   if (!req.session.user) {
     return res.redirect("/login");
+  }
+  if (req.session.user.role !== "shop") {
+    return res.status(403).render("error", { message: "Access denied. Shop account required." });
   }
   next();
 }

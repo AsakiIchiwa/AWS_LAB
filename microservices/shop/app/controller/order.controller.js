@@ -59,10 +59,11 @@ exports.findAll = (req, res) => {
 
 exports.findOne = (req, res) => {
   const id = parseInt(req.params.id);
+  const shopId = req.session.user.id;
   if (isNaN(id) || id < 1) {
     return res.status(400).render("error", { message: "Invalid order ID" });
   }
-  Order.findById(id, (err, data) => {
+  Order.findById(id, shopId, (err, data) => {
     if (err) {
       if (err.kind === "not_found") { res.status(404).render("error", { message: "Order not found" }); return; }
       res.status(500).render("error", { message: "Error retrieving order" }); return;

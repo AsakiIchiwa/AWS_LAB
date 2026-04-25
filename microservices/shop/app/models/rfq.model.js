@@ -33,7 +33,7 @@ RFQ.findByShopId = (shopId, result) => {
   );
 };
 
-RFQ.findById = (id, result) => {
+RFQ.findById = (id, shopId, result) => {
   pool.query(
     `SELECT r.*, p.name as product_name, p.price as list_price, p.image_url, p.description as product_desc,
      u.full_name as supplier_name, s.full_name as shop_name,
@@ -43,8 +43,8 @@ RFQ.findById = (id, result) => {
      JOIN users u ON r.supplier_id = u.id
      JOIN users s ON r.shop_id = s.id
      LEFT JOIN quotes q ON q.rfq_id = r.id
-     WHERE r.id = ?`,
-    [id],
+     WHERE r.id = ? AND r.shop_id = ?`,
+    [id, shopId],
     (err, res) => {
       if (err) { result(err, null); return; }
       if (res.length) { result(null, res[0]); return; }
@@ -54,18 +54,18 @@ RFQ.findById = (id, result) => {
 };
 
 // Shop accepts a quote -> creates contract
-RFQ.acceptQuote = (rfqId, quoteId, result) => {
+RFQ.acceptQuote = (rfqId, quoteId, shopId, result) => {
   pool.getConnection((err, connection) => {
     if (err) { result(err, null); return; }
     connection.beginTransaction((err) => {
       if (err) { connection.release(); result(err, null); return; }
 
-      // Get quote + rfq details
+      // Get quote + rfq details (with ownership check)
       connection.query(
         `SELECT q.*, r.shop_id, r.product_id, r.quantity
          FROM quotes q JOIN rfqs r ON q.rfq_id = r.id
-         WHERE q.id = ? AND q.rfq_id = ?`,
-        [quoteId, rfqId],
+         WHERE q.id = ? AND q.rfq_id = ? AND r.shop_id = ?`,
+        [quoteId, rfqId, shopId],
         (err, res) => {
           if (err) { connection.rollback(() => connection.release()); result(err, null); return; }
           if (!res.length) { connection.release(); result({ kind: "not_found" }, null); return; }
@@ -105,14 +105,15 @@ RFQ.acceptQuote = (rfqId, quoteId, result) => {
 };
 
 // Shop rejects a quote
-RFQ.rejectQuote = (rfqId, quoteId, result) => {
+RFQ.rejectQuote = (rfqId, quoteId, shopId, result) => {
   pool.getConnection((err, connection) => {
     if (err) { result(err, null); return; }
     connection.beginTransaction((err) => {
       if (err) { connection.release(); result(err, null); return; }
-      connection.query("UPDATE quotes SET status = 'rejected' WHERE id = ? AND rfq_id = ?", [quoteId, rfqId], (err) => {
+      connection.query("UPDATE quotes SET status = 'rejected' WHERE id = ? AND rfq_id = ?", [quoteId, rfqId], (err, qRes) => {
         if (err) { connection.rollback(() => connection.release()); result(err, null); return; }
-        connection.query("UPDATE rfqs SET status = 'rejected' WHERE id = ?", [rfqId], (err) => {
+        if (qRes.affectedRows === 0) { connection.rollback(() => connection.release()); result({ kind: "not_found" }, null); return; }
+        connection.query("UPDATE rfqs SET status = 'rejected' WHERE id = ? AND shop_id = ?", [rfqId, shopId], (err) => {
           if (err) { connection.rollback(() => connection.release()); result(err, null); return; }
           connection.commit((err) => {
             if (err) { connection.rollback(() => connection.release()); result(err, null); return; }

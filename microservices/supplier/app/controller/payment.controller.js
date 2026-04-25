@@ -21,7 +21,8 @@ exports.process = (req, res) => {
     return res.status(400).render("error", { message: "Invalid payment method" });
   }
 
-  Payment.process(orderId, method, (err, data) => {
+  const supplierId = req.session.user.id;
+  Payment.process(orderId, supplierId, method, (err, data) => {
     if (err) {
       if (err.kind === "order_not_confirmed") {
         return res.render("error", { message: "Order must be confirmed before payment" });

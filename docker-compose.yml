@@ -30,6 +30,8 @@ services:
       APP_DB_NAME: b2bmarket
       APP_DB_PORT: 3306
       PORT: 8080
+      SHOP_URL: "http://localhost:8080/"
+      SUPPLIER_URL: "http://localhost:8081/admin/"
     depends_on:
       db:
         condition: service_healthy

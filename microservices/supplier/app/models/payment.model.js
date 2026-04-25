@@ -3,9 +3,12 @@ const pool = require("../config/db");
 const Payment = {};
 
 // Process payment for an order (Saga step - payment)
-Payment.process = (orderId, method, result) => {
-  // Check order exists and is confirmed
-  pool.query("SELECT * FROM orders WHERE id = ? AND status = 'confirmed'", [orderId], (err, res) => {
+Payment.process = (orderId, supplierId, method, result) => {
+  // Check order exists, is confirmed, and belongs to this supplier's product
+  pool.query(
+    "SELECT o.* FROM orders o JOIN products p ON o.product_id = p.id WHERE o.id = ? AND p.supplier_id = ? AND o.status = 'confirmed'",
+    [orderId, supplierId],
+    (err, res) => {
     if (err) { result(err, null); return; }
     if (!res.length) { result({ kind: "order_not_confirmed" }, null); return; }
 

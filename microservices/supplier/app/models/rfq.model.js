@@ -19,7 +19,7 @@ RFQ.findBySupplierId = (supplierId, result) => {
   );
 };
 
-RFQ.findById = (id, result) => {
+RFQ.findById = (id, supplierId, result) => {
   pool.query(
     `SELECT r.*, p.name as product_name, p.price as list_price, p.image_url,
      s.full_name as shop_name, u.full_name as supplier_name,
@@ -29,8 +29,8 @@ RFQ.findById = (id, result) => {
      JOIN users s ON r.shop_id = s.id
      JOIN users u ON r.supplier_id = u.id
      LEFT JOIN quotes q ON q.rfq_id = r.id
-     WHERE r.id = ?`,
-    [id],
+     WHERE r.id = ? AND r.supplier_id = ?`,
+    [id, supplierId],
     (err, res) => {
       if (err) { result(err, null); return; }
       if (res.length) { result(null, res[0]); return; }
@@ -46,21 +46,41 @@ RFQ.submitQuote = (rfqId, data, result) => {
     connection.beginTransaction((err) => {
       if (err) { connection.release(); result(err, null); return; }
 
+      // Verify RFQ belongs to this supplier and is in 'pending' status, and no existing quote
       connection.query(
-        "INSERT INTO quotes (rfq_id, supplier_id, unit_price, moq, delivery_days, note) VALUES (?, ?, ?, ?, ?, ?)",
-        [rfqId, data.supplier_id, data.unit_price, data.moq || 1, data.delivery_days || 7, data.note || ""],
-        (err, res) => {
+        "SELECT id FROM rfqs WHERE id = ? AND supplier_id = ? AND status = 'pending'",
+        [rfqId, data.supplier_id],
+        (err, rfqRes) => {
           if (err) { connection.rollback(() => connection.release()); result(err, null); return; }
+          if (!rfqRes.length) { connection.rollback(() => connection.release()); result({ kind: "not_found_or_already_quoted" }, null); return; }
 
-          connection.query("UPDATE rfqs SET status = 'quoted' WHERE id = ?", [rfqId], (err) => {
-            if (err) { connection.rollback(() => connection.release()); result(err, null); return; }
-
-            connection.commit((err) => {
+          // Check no existing quote for this RFQ by this supplier
+          connection.query(
+            "SELECT id FROM quotes WHERE rfq_id = ? AND supplier_id = ?",
+            [rfqId, data.supplier_id],
+            (err, existingQuote) => {
               if (err) { connection.rollback(() => connection.release()); result(err, null); return; }
-              connection.release();
-              result(null, { id: res.insertId, rfq_id: rfqId });
-            });
-          });
+              if (existingQuote.length) { connection.rollback(() => connection.release()); result({ kind: "duplicate_quote" }, null); return; }
+
+              connection.query(
+                "INSERT INTO quotes (rfq_id, supplier_id, unit_price, moq, delivery_days, note) VALUES (?, ?, ?, ?, ?, ?)",
+                [rfqId, data.supplier_id, data.unit_price, data.moq || 1, data.delivery_days || 7, data.note || ""],
+                (err, res) => {
+                  if (err) { connection.rollback(() => connection.release()); result(err, null); return; }
+
+                  connection.query("UPDATE rfqs SET status = 'quoted' WHERE id = ?", [rfqId], (err) => {
+                    if (err) { connection.rollback(() => connection.release()); result(err, null); return; }
+
+                    connection.commit((err) => {
+                      if (err) { connection.rollback(() => connection.release()); result(err, null); return; }
+                      connection.release();
+                      result(null, { id: res.insertId, rfq_id: rfqId });
+                    });
+                  });
+                }
+              );
+            }
+          );
         }
       );
     });
