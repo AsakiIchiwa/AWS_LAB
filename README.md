@@ -26,14 +26,15 @@ A microservices-based B2B marketplace system deployed on AWS using containerized
 
 The system models a B2B marketplace with **three roles**:
 - **Shop** (buyer) — browse products, send RFQs, review quotes, manage contracts, place orders
-- **Supplier** (seller) — manage inventory, upload product images, respond to RFQs with quotes, confirm contracts/orders, process payments
+- **Supplier** (seller) — manage inventory, upload product images, respond to RFQs with quotes, confirm orders, process payments
 - **Admin** (system controller) — approve/reject new users and products, monitor all RFQs, contracts, and system activity
 
-The full B2B procurement flow is: **RFQ → Quote → Contract → Order → Payment**, following real-world B2B purchasing processes. The application is split into two independently deployable microservices, each running in its own Docker container on AWS ECS Fargate. The Admin role is hosted within the Supplier Service under a dedicated route prefix (`/admin/manage/*`) — a deliberate design choice to optimize costs while maintaining clean code separation (own controller, model, and views) that allows extraction into a 3rd service when scaling demands it.
+The full B2B procurement flow is: **RFQ → Quote → Order → Payment** (with a contract record generated at quote acceptance), following real-world B2B purchasing processes. The application is split into two independently deployable microservices, each running in its own Docker container on AWS ECS Fargate. The Admin role is hosted within the Supplier Service under a dedicated route prefix (`/admin/manage/*`) — a deliberate design choice to optimize costs while maintaining clean code separation (own controller, model, and views) that allows extraction into a 3rd service when scaling demands it.
 
 Key design decisions:
 - Three-role system (Shop, Supplier, Admin) with approval workflows
-- End-to-end RFQ → Quote → Contract → Order → Payment flow
+- End-to-end RFQ → Quote → Order → Payment flow (contract record auto-generated on acceptance)
+- Single shared authentication entrypoint (`/login`, `/register`) with role-based redirect
 - Saga pattern for distributed transaction management with compensating actions
 - Admin approval gates for new users and product listings
 - S3-based image storage for product photos
@@ -95,26 +96,26 @@ Traffic routing is handled by a single Application Load Balancer with path-based
 
 ### Shop Service (Buyer)
 
-Handles the buyer-facing experience. Shops browse products, send RFQs to suppliers, review quotes, accept/reject quotes to form contracts, and create orders from contracts.
+Handles the buyer-facing experience. Shops browse products, send RFQs to suppliers, review quotes, and accept/reject quotes. On quote acceptance, the system creates a confirmed contract record and immediately creates an order.
 
 | Responsibility | Description |
 |---|---|
 | Product browsing | View all approved products with images, search and filtering |
 | RFQ management | Send Request for Quotation to suppliers for specific products |
-| Quote review | Review supplier quotes, accept or reject them |
+| Quote review | Review supplier quotes and accept or reject them |
 | Contract management | View contracts formed from accepted quotes |
-| Order placement | Create orders from contracts with stock validation |
+| Order placement | Order is auto-created when a quote is accepted (with stock validation) |
 | Order tracking | View order history and current status |
 
 ### Supplier Service (Seller + Admin)
 
-Handles seller operations and system administration. Suppliers manage inventory, respond to RFQs with quotes, confirm contracts and orders, and process payments. The Admin role (integrated here) approves users/products and monitors system activity. The Supplier Service has its own independent authentication flow (`/admin/login`, `/admin/register`, `/admin/logout`) with its own login and registration views — it does not redirect to the Shop Service for authentication.
+Handles seller operations and system administration. Suppliers manage inventory, respond to RFQs with quotes, confirm orders, and process payments. The Admin role (integrated here) approves users/products and monitors system activity. Authentication uses a single shared entrypoint (`/login`, `/register`) in Shop Service. Supplier auth pages (`/admin/login`, `/admin/register`) now redirect to the shared auth pages.
 
 | Responsibility | Description |
 |---|---|
 | Product management | Full CRUD with image upload to Amazon S3 |
-| RFQ response | View incoming RFQs and submit quotes (price, MOQ, delivery) |
-| Contract management | Confirm or cancel contracts formed from accepted quotes |
+| RFQ response | View incoming RFQs, submit quotes, update pending quotes, or reject RFQs |
+| Contract management | View contracts formed from accepted quotes |
 | Order management | View, confirm, or cancel incoming orders |
 | Payment processing | Process payments for confirmed orders |
 | **Admin: User approval** | Approve/reject new user registrations, delete users |
@@ -136,8 +137,8 @@ Step 1: SEND RFQ (Shop Service)
   |  Shop selects a product and sends RFQ with desired quantity
   |  RFQ status: pending
   v
-Step 2: SUBMIT QUOTE (Supplier Service)
-  |  Supplier reviews RFQ and submits quote (unit_price, MOQ, delivery_days)
+Step 2: SUBMIT OR UPDATE QUOTE / REJECT RFQ (Supplier Service)
+  |  Supplier reviews RFQ and can submit quote, update pending quote, or reject RFQ
   |  RFQ status: quoted
   |
   |  [No response] --> RFQ remains pending
@@ -147,34 +148,20 @@ Step 3: ACCEPT/REJECT QUOTE (Shop Service)
   |  [Accept] --> BEGIN TRANSACTION
   |                Update quote status: accepted
   |                Update RFQ status: accepted
-  |                Create contract record
+  |                Create contract record (status: confirmed)
+  |                Create order record (status: pending)
+  |                Deduct stock from product
   |              COMMIT
   |  [Reject] --> Update quote status: rejected
   v
-Step 4: CONFIRM CONTRACT (Supplier Service)
-  |  Supplier confirms the contract
-  |  Contract status: draft --> confirmed
-  |
-  |  [Cancel] --> Contract status: cancelled
-  v
-Step 5: CREATE ORDER FROM CONTRACT (Shop Service)
-  |  Shop creates order linked to the contract
-  |  BEGIN TRANSACTION
-  |    Validate stock availability
-  |    Insert order record (status: pending)
-  |    Deduct stock from product
-  |  COMMIT
-  |
-  |  [Failure] --> Rollback: no order created, stock unchanged
-  v
-Step 6: CONFIRM ORDER (Supplier Service)
+Step 4: CONFIRM ORDER (Supplier Service)
   |  Supplier reviews and confirms the order
   |  Update order status: pending --> confirmed
   |
   |  [Reject] --> CANCEL ORDER (compensating transaction)
   |               Restore stock to product
   v
-Step 7: PROCESS PAYMENT (Supplier Service)
+Step 5: PROCESS PAYMENT (Supplier Service)
   |  Validate payment method (bank_transfer, qr_code, cod)
   |  BEGIN TRANSACTION
   |    Insert payment record (status: success)
@@ -183,7 +170,7 @@ Step 7: PROCESS PAYMENT (Supplier Service)
   |
   |  [Payment Failure] --> Compensating: cancel order + restore stock
   v
-Step 8: ORDER COMPLETE
+Step 6: ORDER COMPLETE
   Final state: order.status = 'paid', payment recorded
 ```
 
@@ -329,7 +316,7 @@ The application implements multiple layers of security:
 | Layer | Implementation | Description |
 |---|---|---|
 | Authentication | `bcryptjs` + `express-session` | Password hashing (10 salt rounds), session-based login, role-based access control |
-| Auth Middleware | `requireAuth`, `requireAdmin` | All routes protected; unauthenticated users redirected to service-specific login (`/login` for Shop, `/admin/login` for Supplier); admin routes require admin role |
+| Auth Middleware | `requireAuth`, `requireAdmin` | All routes protected; unauthenticated users redirected to shared login (`/login`); admin routes require admin role |
 | HTTP Headers | `helmet` | Sets security headers: X-XSS-Protection, X-Content-Type-Options, Strict-Transport-Security, X-Frame-Options |
 | CORS | `cors` | Configurable origin restriction via `ALLOWED_ORIGINS` env var |
 | Rate Limiting | `express-rate-limit` | Global: 200 req/15min per IP. Write operations: 10-20 req/min per IP |
@@ -352,6 +339,11 @@ users          -- Registered accounts
   full_name    VARCHAR(255)
   role         ENUM('shop', 'supplier', 'admin')
   status       ENUM('pending', 'approved', 'rejected') DEFAULT 'pending'
+
+sessions       -- Shared session store (express-mysql-session)
+  session_id   VARCHAR(128) PRIMARY KEY
+  expires      INT UNSIGNED
+  data         MEDIUMTEXT
 
 products       -- Product catalog (requires admin approval)
   id           INT PRIMARY KEY AUTO_INCREMENT
@@ -422,9 +414,9 @@ payments       -- Payment records for confirmed orders
 | Method | Path | Description |
 |---|---|---|
 | GET | `/login` | Login page |
-| POST | `/login` | Authenticate user (shop role only) |
+| POST | `/login` | Authenticate user and redirect by role |
 | GET | `/register` | Registration page |
-| POST | `/register` | Create new shop account (pending approval) |
+| POST | `/register` | Create new shop or supplier account (pending approval) |
 | GET | `/logout` | Logout and destroy session |
 | GET | `/profile` | View/edit profile and change password |
 | POST | `/profile` | Update profile (name, email) |
@@ -437,7 +429,7 @@ payments       -- Payment records for confirmed orders
 | GET | `/rfqs/new/:productId` | RFQ creation form |
 | POST | `/rfqs` | Submit new RFQ |
 | GET | `/rfqs/:id` | RFQ detail with quotes and accept/reject |
-| POST | `/rfqs/:id/accept/:quoteId` | Accept a quote → create contract |
+| POST | `/rfqs/:id/accept/:quoteId` | Accept a quote → create confirmed contract + order |
 | POST | `/rfqs/:id/reject/:quoteId` | Reject a quote |
 | GET | `/contracts` | List shop's contracts |
 | GET | `/contracts/:id` | Contract detail |
@@ -452,10 +444,8 @@ payments       -- Payment records for confirmed orders
 | Method | Path | Description |
 |---|---|---|
 | GET | `/health` | Health check |
-| GET | `/admin/login` | Login page |
-| POST | `/admin/login` | Authenticate user (supplier/admin roles only) |
-| GET | `/admin/register` | Registration page |
-| POST | `/admin/register` | Create new supplier account (pending approval) |
+| GET | `/admin/login` | Redirect to shared login page (`/login`) |
+| GET | `/admin/register` | Redirect to shared registration page (`/register`) |
 | GET | `/admin/logout` | Logout and destroy session |
 | GET | `/admin/profile` | View/edit profile and change password |
 | POST | `/admin/profile` | Update profile (name, email) |
@@ -469,11 +459,12 @@ payments       -- Payment records for confirmed orders
 | POST | `/admin/products/delete/:id` | Delete product + remove image from S3 |
 | GET | `/admin/rfqs` | List supplier's incoming RFQs |
 | GET | `/admin/rfqs/:id` | RFQ detail with quote form |
-| POST | `/admin/rfqs/:id/quote` | Submit quote for an RFQ |
+| POST | `/admin/rfqs/:id/quote` | Submit new quote or update existing pending quote |
+| POST | `/admin/rfqs/:id/reject` | Reject RFQ from supplier side |
 | GET | `/admin/contracts` | List supplier's contracts |
 | GET | `/admin/contracts/:id` | Contract detail |
-| POST | `/admin/contracts/:id/confirm` | Confirm contract |
-| POST | `/admin/contracts/:id/cancel` | Cancel contract |
+| POST | `/admin/contracts/:id/confirm` | Confirm draft contract |
+| POST | `/admin/contracts/:id/cancel` | Cancel draft/confirmed contract |
 | GET | `/admin/orders` | List all orders |
 | GET | `/admin/orders/:id` | Order detail with actions |
 | POST | `/admin/orders/:id/confirm` | Confirm order |
@@ -518,8 +509,8 @@ The database is automatically initialized with schema and seed data from `deploy
 | Email | Password | Role | Service |
 |---|---|---|---|
 | `shop1@b2bmarket.com` | `password123` | Shop | Shop (`/login`) |
-| `supplier1@b2bmarket.com` | `password123` | Supplier | Supplier (`/admin/login`) |
-| `admin@b2bmarket.com` | `password123` | Admin | Supplier (`/admin/login`) |
+| `supplier1@b2bmarket.com` | `password123` | Supplier | Shared Login (`/login`) |
+| `admin@b2bmarket.com` | `password123` | Admin | Shared Login (`/login`) |
 
 ### Stopping
 

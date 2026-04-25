@@ -49,7 +49,6 @@
             <p class="text-muted small mb-4">Fill in the details below and the supplier will respond with a custom quote.</p>
             <form action="/rfqs" method="POST">
               <input type="hidden" name="product_id" value="<%= product.id %>">
-              <input type="hidden" name="supplier_id" value="<%= product.supplier_id %>">
               <div class="mb-3">
                 <label class="form-label fw-semibold small">Quantity Needed</label>
                 <input type="number" name="quantity" class="form-control" min="1" max="100000" required>

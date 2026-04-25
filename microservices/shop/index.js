@@ -82,10 +82,17 @@ app.use(session({
   }
 }));
 
+function ensureTrailingSlash(url) {
+  return url.endsWith("/") ? url : `${url}/`;
+}
+
+const supplierBaseUrl = ensureTrailingSlash(process.env.SUPPLIER_URL || "/admin/");
+const supplierAdminUrl = `${supplierBaseUrl}manage`;
+
 // Make user and cross-service URLs available in all views
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
-  res.locals.supplierUrl = process.env.SUPPLIER_URL || "/admin/";
+  res.locals.supplierUrl = supplierBaseUrl;
   next();
 });
 
@@ -106,10 +113,16 @@ function requireAuth(req, res, next) {
   if (!req.session.user) {
     return res.redirect("/login");
   }
-  if (req.session.user.role !== "shop") {
-    return res.status(403).render("error", { message: "Access denied. Shop account required." });
+  if (req.session.user.role === "shop") {
+    return next();
   }
-  next();
+  if (req.session.user.role === "supplier") {
+    return res.redirect(supplierBaseUrl);
+  }
+  if (req.session.user.role === "admin") {
+    return res.redirect(supplierAdminUrl);
+  }
+  return res.status(403).render("error", { message: "Access denied. Invalid role." });
 }
 
 // --------------- ROUTES ---------------

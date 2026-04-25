@@ -11,7 +11,16 @@ const dbConfig = require("./app/config/config");
 
 const app = express();
 
-// --------------- SECURITY ---------------
+function buildServiceUrl(base, pathSuffix) {
+  const cleanBase = (base || "").replace(/\/+$/, "");
+  const cleanSuffix = pathSuffix === "/" ? "/" : `/${String(pathSuffix || "").replace(/^\/+/, "")}`;
+  return cleanBase ? `${cleanBase}${cleanSuffix}` : cleanSuffix;
+}
+
+const shopBaseUrl = process.env.SHOP_URL || "/";
+const shopHomeUrl = buildServiceUrl(shopBaseUrl, "/");
+const authLoginUrl = buildServiceUrl(shopBaseUrl, "/login");
+const authRegisterUrl = buildServiceUrl(shopBaseUrl, "/register");
 
 app.use(helmet({
   contentSecurityPolicy: false,
@@ -38,12 +47,8 @@ const writeLimiter = rateLimit({
   message: "Too many write operations. Please wait a moment."
 });
 
-// --------------- PERFORMANCE ---------------
-
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
-
-// --------------- APP CONFIG ---------------
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -56,8 +61,6 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(express.json({ limit: "10mb" }));
 
 app.set("trust proxy", 1);
-
-// --------------- SESSION (shared MySQL store) ---------------
 
 const sessionStore = new MySQLStore({
   host: dbConfig.HOST,
@@ -76,7 +79,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Set to true only if using HTTPS (ALB with ACM certificate)
+    secure: false,
     httpOnly: true,
     sameSite: "lax",
     maxAge: 24 * 60 * 60 * 1000
@@ -85,11 +88,11 @@ app.use(session({
 
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
-  res.locals.shopUrl = process.env.SHOP_URL || "/";
+  res.locals.shopUrl = shopHomeUrl;
+  res.locals.authLoginUrl = authLoginUrl;
+  res.locals.authRegisterUrl = authRegisterUrl;
   next();
 });
-
-// --------------- HEALTH CHECK ---------------
 
 app.get("/health", (req, res) => {
   res.status(200).json({
@@ -100,29 +103,28 @@ app.get("/health", (req, res) => {
   });
 });
 
-// --------------- AUTH MIDDLEWARE ---------------
-
 function requireAuth(req, res, next) {
   if (!req.session.user) {
-    return res.redirect("/admin/login");
+    return res.redirect(authLoginUrl);
   }
-  if (req.session.user.role !== "supplier" && req.session.user.role !== "admin") {
-    return res.status(403).render("error", { message: "Access denied. Supplier or Admin account required." });
+  if (req.session.user.role === "supplier" || req.session.user.role === "admin") {
+    return next();
   }
-  next();
+  if (req.session.user.role === "shop") {
+    return res.redirect(shopHomeUrl);
+  }
+  return res.status(403).render("error", { message: "Access denied. Invalid role." });
 }
 
 function requireAdmin(req, res, next) {
   if (!req.session.user) {
-    return res.redirect("/admin/login");
+    return res.redirect(authLoginUrl);
   }
   if (req.session.user.role !== "admin") {
     return res.status(403).render("error", { message: "Access denied. Admin role required." });
   }
   next();
 }
-
-// --------------- ROUTES ---------------
 
 const authController = require("./app/controller/auth.controller");
 const productController = require("./app/controller/product.controller");
@@ -132,24 +134,24 @@ const rfqController = require("./app/controller/rfq.controller");
 const contractController = require("./app/controller/contract.controller");
 const adminController = require("./app/controller/admin.controller");
 
-// Auth routes (public)
-app.get("/admin/login", authController.loginForm);
-app.post("/admin/login", authController.login);
-app.get("/admin/register", authController.registerForm);
-app.post("/admin/register", authController.register);
-app.get("/admin/logout", authController.logout);
+app.get("/login", (req, res) => res.redirect(authLoginUrl));
+app.get("/register", (req, res) => res.redirect(authRegisterUrl));
+app.get("/admin/login", (req, res) => res.redirect(authLoginUrl));
+app.get("/admin/register", (req, res) => res.redirect(authRegisterUrl));
+app.get("/admin/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.redirect(authLoginUrl);
+  });
+});
 
-// Profile (authenticated)
 app.get("/admin/profile", requireAuth, authController.profile);
 app.post("/admin/profile", requireAuth, authController.updateProfile);
 app.post("/admin/profile/password", requireAuth, authController.changePassword);
 
-// Supplier Dashboard
 app.get("/admin/", requireAuth, (req, res) => {
   res.render("dashboard");
 });
 
-// Supplier - Products CRUD
 app.get("/admin/products", requireAuth, productController.findAll);
 app.get("/admin/products/add", requireAuth, productController.createForm);
 app.post("/admin/products", requireAuth, productController.create);
@@ -157,28 +159,24 @@ app.get("/admin/products/edit/:id", requireAuth, productController.editForm);
 app.post("/admin/products/update/:id", requireAuth, productController.update);
 app.post("/admin/products/delete/:id", requireAuth, writeLimiter, productController.remove);
 
-// Supplier - RFQs (view + submit quote)
 app.get("/admin/rfqs", requireAuth, rfqController.findAll);
 app.get("/admin/rfqs/:id", requireAuth, rfqController.findOne);
 app.post("/admin/rfqs/:id/quote", requireAuth, writeLimiter, rfqController.submitQuote);
+app.post("/admin/rfqs/:id/reject", requireAuth, writeLimiter, rfqController.reject);
 
-// Supplier - Contracts
 app.get("/admin/contracts", requireAuth, contractController.findAll);
 app.get("/admin/contracts/:id", requireAuth, contractController.findOne);
 app.post("/admin/contracts/:id/confirm", requireAuth, writeLimiter, contractController.confirm);
 app.post("/admin/contracts/:id/cancel", requireAuth, writeLimiter, contractController.cancel);
 
-// Supplier - Orders
 app.get("/admin/orders", requireAuth, orderController.findAll);
 app.get("/admin/orders/:id", requireAuth, orderController.findOne);
 app.post("/admin/orders/:id/confirm", requireAuth, writeLimiter, orderController.confirm);
 app.post("/admin/orders/:id/cancel", requireAuth, writeLimiter, orderController.cancel);
 
-// Supplier - Payments
 app.get("/admin/orders/:id/payment", requireAuth, paymentController.processForm);
 app.post("/admin/orders/:id/payment", requireAuth, writeLimiter, paymentController.process);
 
-// ---- ADMIN MANAGEMENT ROUTES (admin role only) ----
 app.get("/admin/manage", requireAdmin, adminController.dashboard);
 app.get("/admin/manage/users", requireAdmin, adminController.users);
 app.post("/admin/manage/users/:id/approve", requireAdmin, writeLimiter, adminController.approveUser);
@@ -190,8 +188,6 @@ app.post("/admin/manage/products/:id/reject", requireAdmin, writeLimiter, adminC
 app.post("/admin/manage/products/:id/delete", requireAdmin, writeLimiter, adminController.deleteProduct);
 app.get("/admin/manage/rfqs", requireAdmin, adminController.rfqs);
 app.get("/admin/manage/contracts", requireAdmin, adminController.contracts);
-
-// --------------- ERROR HANDLING ---------------
 
 app.use((req, res) => {
   res.status(404).render("error", { message: "Page not found" });
@@ -206,14 +202,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-// --------------- SERVER START ---------------
-
 const PORT = process.env.PORT || 8080;
 const server = app.listen(PORT, () => {
   console.log(`[Supplier Service] Running on port ${PORT} | ENV: ${process.env.NODE_ENV || "development"}`);
 });
-
-// --------------- GRACEFUL SHUTDOWN ---------------
 
 const pool = require("./app/config/db");
 

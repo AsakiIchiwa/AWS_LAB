@@ -1,6 +1,30 @@
 const Auth = require("../models/auth.model");
 
+function ensureTrailingSlash(url) {
+  return url.endsWith("/") ? url : `${url}/`;
+}
+
+function getRoleLandingUrl(user) {
+  const supplierBaseUrl = ensureTrailingSlash(process.env.SUPPLIER_URL || "/admin/");
+  if (user.role === "supplier") {
+    return supplierBaseUrl;
+  }
+  if (user.role === "admin") {
+    return `${supplierBaseUrl}manage`;
+  }
+  return "/";
+}
+
+function redirectIfLoggedIn(req, res) {
+  if (!req.session.user) {
+    return false;
+  }
+  res.redirect(getRoleLandingUrl(req.session.user));
+  return true;
+}
+
 exports.loginForm = (req, res) => {
+  if (redirectIfLoggedIn(req, res)) return;
   res.render("login", { error: null });
 };
 
@@ -20,16 +44,12 @@ exports.login = (req, res) => {
       return res.render("login", { error: "Login failed" });
     }
     req.session.user = user;
-    // Role-based redirect: supplier/admin → supplier panel, shop → shop home
-    if (user.role === "supplier" || user.role === "admin") {
-      const supplierUrl = process.env.SUPPLIER_URL || "/admin/";
-      return res.redirect(supplierUrl);
-    }
-    res.redirect("/");
+    res.redirect(getRoleLandingUrl(user));
   });
 };
 
 exports.registerForm = (req, res) => {
+  if (redirectIfLoggedIn(req, res)) return;
   res.render("register", { error: null });
 };
 
@@ -38,7 +58,6 @@ exports.register = (req, res) => {
   const full_name = (req.body.full_name || "").trim().replace(/<[^>]*>/g, "");
   const password = req.body.password || "";
   const confirm_password = req.body.confirm_password || "";
-  // Only allow shop or supplier; admin cannot self-register
   const role = req.body.role === "supplier" ? "supplier" : "shop";
 
   if (!email || !full_name || !password) {
@@ -51,7 +70,7 @@ exports.register = (req, res) => {
     return res.render("register", { error: "Passwords do not match" });
   }
 
-  Auth.register({ email, full_name, password, role }, (err, user) => {
+  Auth.register({ email, full_name, password, role }, (err) => {
     if (err) {
       if (err.kind === "duplicate") return res.render("register", { error: "Email already registered" });
       return res.render("register", { error: "Registration failed" });

@@ -22,6 +22,25 @@
 
 ---
 
+## Current Behavior Update (2026-04-25)
+
+Use these rules as source-of-truth for running the current codebase:
+
+1. Authentication now uses a single shared entrypoint: `/login` and `/register`.
+2. Supplier auth URLs (`/admin/login`, `/admin/register`) redirect to shared auth pages.
+3. Role-based redirect after login:
+   - `shop` -> Shop (`/`)
+   - `supplier` -> Supplier Dashboard (`/admin/`)
+   - `admin` -> Admin Dashboard (`/admin/manage`)
+4. RFQ flow:
+   - Shop creates RFQ
+   - Supplier can submit quote, update pending quote, or reject RFQ
+   - Shop accepts/rejects quote
+   - On accept, system creates confirmed contract record and creates order immediately
+5. Database init now includes `sessions` table (shared session store).
+
+---
+
 ## Phase 1: Planning the Design and Estimating Cost
 
 ### Task 1.1: Review the Architecture Diagram
@@ -286,7 +305,7 @@ docker run -d --name supplier_1 -p 8081:8080 \
 ```
 
 Test: Use **Cloud9 Preview** or access `http://<Cloud9-Public-IP>:8081/admin/login` in a browser. Confirm:
-- Supplier login page loads
+- Redirects to shared login page (`/login`) and authentication still works
 - Admin dashboard accessible after login
 
 > **Tip**: For Cloud9 Preview on port 8081, change the preview URL port from 8080 to 8081.
@@ -514,7 +533,7 @@ Verify (note: you must include `-u admin -plab-password` and the database name):
 mysql -h <RDS-ENDPOINT> -u admin -plab-password b2bmarket -e "SHOW TABLES;"
 ```
 
-You should see tables: `users`, `products`, `rfqs`, `quotes`, `contracts`, `orders`, `payments`.
+You should see tables: `users`, `sessions`, `products`, `rfqs`, `quotes`, `contracts`, `orders`, `payments`.
 
 ### Task 6.4: Substitute the RDS endpoint into task definitions
 
@@ -756,8 +775,8 @@ Verify:
 ### Task 8.5: Test the application via ALB
 
 1. Copy the ALB DNS Name from **EC2** → **Load Balancers** → `b2b-alb`
-2. Open `http://<ALB-DNS-Name>/` in a browser → Should show the Shop login page
-3. Open `http://<ALB-DNS-Name>/admin/login` → Should show the Supplier login page
+2. Open `http://<ALB-DNS-Name>/` in a browser → Should show the shared login page
+3. Open `http://<ALB-DNS-Name>/admin/login` → Should redirect to shared login page (`/login`)
 4. Open `http://<ALB-DNS-Name>/health` → Should return `{"status":"ok","service":"shop",...}`
 5. Open `http://<ALB-DNS-Name>/admin/health` → does NOT exist; the supplier health check is internal at the task IP, not exposed via ALB
 
@@ -1502,6 +1521,21 @@ If you stop an RDS instance, AWS will **automatically restart it after 7 days**.
 3. Run `./deploy.sh shop` to trigger CodeDeploy
 4. Show CodeDeploy blue/green deployment in progress
 5. Show new version deployed after traffic switch
+
+### Demo Flow Update (Current Code)
+
+For current code version, use this flow instead of older contract-confirm step:
+
+1. Login from shared page (`/login`) for every role.
+2. Supplier URL `/admin/login` redirects to shared login.
+3. Shop creates RFQ.
+4. Supplier submits quote, can update pending quote, or reject RFQ.
+5. Shop accepts quote:
+   - quote -> accepted
+   - RFQ -> accepted
+   - contract record auto-created (`confirmed`)
+   - order auto-created (`pending`) and stock deducted
+6. Supplier confirms order, then processes payment.
 
 ---
 

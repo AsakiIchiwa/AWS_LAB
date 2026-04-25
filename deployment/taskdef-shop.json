@@ -32,6 +32,10 @@
         {
           "name": "APP_DB_PORT",
           "value": "3306"
+        },
+        {
+          "name": "SUPPLIER_URL",
+          "value": "/admin/"
         }
       ],
       "essential": true,

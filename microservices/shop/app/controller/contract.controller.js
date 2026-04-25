@@ -28,6 +28,7 @@ exports.createOrder = (req, res) => {
   Contract.createOrder(id, shopId, (err, data) => {
     if (err) {
       if (err.kind === "not_confirmed") return res.render("error", { message: "Contract must be confirmed by supplier first" });
+      if (err.kind === "already_ordered") return res.redirect("/orders/" + err.order_id);
       if (err.kind === "insufficient_stock") return res.render("error", { message: `Insufficient stock. Available: ${err.available}` });
       return res.status(500).render("error", { message: "Error creating order from contract" });
     }

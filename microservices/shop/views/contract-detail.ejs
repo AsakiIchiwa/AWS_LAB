@@ -77,7 +77,9 @@
             <div class="small text-muted mb-1">Total Contract Value</div>
             <div class="fs-2 fw-bold text-success mb-1">$<%= parseFloat(contract.total_amount).toFixed(2) %></div>
             <div class="small text-muted mb-4"><%= contract.quantity %> × $<%= parseFloat(contract.unit_price).toFixed(2) %></div>
-            <% if (contract.status === 'confirmed') { %>
+            <% if (contract.order_id) { %>
+            <a href="/orders/<%= contract.order_id %>" class="btn btn-outline-primary w-100">View Related Order</a>
+            <% } else if (contract.status === 'confirmed') { %>
             <form action="/contracts/<%= contract.id %>/order" method="POST">
               <button class="btn btn-success w-100">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .49.598l-1 5a.5.5 0 0 1-.465.401l-9.397.472L4.415 11H13a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5"/></svg>

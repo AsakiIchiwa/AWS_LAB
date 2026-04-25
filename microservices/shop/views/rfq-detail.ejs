@@ -14,18 +14,19 @@
       </ol>
     </nav>
 
-    <!-- Status Banner -->
     <div class="alert py-2 mb-4
       <% if (rfq.status === 'pending') { %> alert-warning
       <% } else if (rfq.status === 'quoted') { %> alert-info
       <% } else if (rfq.status === 'accepted') { %> alert-success
+      <% } else if (rfq.status === 'rejected') { %> alert-danger
       <% } else { %> alert-secondary <% } %>
     ">
       <div class="d-flex justify-content-between align-items-center">
         <span class="fw-semibold">
-          <% if (rfq.status === 'pending') { %>⏳ Waiting for supplier to submit a quotation
-          <% } else if (rfq.status === 'quoted') { %>💬 Supplier has submitted a quote — review below
-          <% } else if (rfq.status === 'accepted') { %>✅ Quote accepted — contract created
+          <% if (rfq.status === 'pending') { %>Waiting for supplier response
+          <% } else if (rfq.status === 'quoted') { %>Quote received. Review and decide.
+          <% } else if (rfq.status === 'accepted') { %>Quote accepted. Order was created.
+          <% } else if (rfq.status === 'rejected') { %>This RFQ has been rejected.
           <% } else { %>RFQ Status: <%= rfq.status %><% } %>
         </span>
         <span class="badge bg-white text-dark">RFQ #<%= rfq.id %></span>
@@ -33,7 +34,6 @@
     </div>
 
     <div class="row g-4">
-      <!-- Request Details -->
       <div class="col-md-6">
         <div class="card border-0 shadow-sm h-100" style="border-radius:12px;">
           <div class="card-header bg-white border-bottom-0 pt-4 px-4">
@@ -72,31 +72,30 @@
         </div>
       </div>
 
-      <!-- Quotation -->
       <div class="col-md-6">
         <% if (rfq.quote_id) { %>
         <div class="card border-0 shadow-sm h-100" style="border-radius:12px; border-left: 4px solid #0dcaf0 !important;">
           <div class="card-header bg-white border-bottom-0 pt-4 px-4">
-            <h5 class="fw-bold mb-0">Supplier's Quotation</h5>
+            <h5 class="fw-bold mb-0">Supplier Quote</h5>
           </div>
           <div class="card-body px-4 pb-4">
             <div class="row g-3 mb-3">
               <div class="col-6">
-                <div class="small text-muted">Quoted Unit Price</div>
+                <div class="small text-muted">Unit Price</div>
                 <div class="fs-5 fw-bold text-success">$<%= parseFloat(rfq.quoted_price).toFixed(2) %></div>
               </div>
               <div class="col-6">
-                <div class="small text-muted">Total Estimate</div>
+                <div class="small text-muted">Estimated Total</div>
                 <div class="fs-5 fw-bold">$<%= (parseFloat(rfq.quoted_price) * rfq.quantity).toFixed(2) %></div>
               </div>
             </div>
             <div class="row g-3 mb-3">
               <div class="col-6">
-                <div class="small text-muted">Min Order Qty (MOQ)</div>
+                <div class="small text-muted">MOQ</div>
                 <div class="fw-semibold"><%= rfq.moq %> units</div>
               </div>
               <div class="col-6">
-                <div class="small text-muted">Delivery Time</div>
+                <div class="small text-muted">Delivery</div>
                 <div class="fw-semibold"><%= rfq.delivery_days %> days</div>
               </div>
             </div>
@@ -108,19 +107,16 @@
             <% } %>
             <div class="mb-3">
               <div class="small text-muted">Quote Status</div>
-              <% if (rfq.quote_status === 'pending') { %><span class="badge bg-warning bg-opacity-10 text-warning">Awaiting Your Decision</span>
+              <% if (rfq.quote_status === 'pending') { %><span class="badge bg-warning bg-opacity-10 text-warning">Awaiting Decision</span>
               <% } else if (rfq.quote_status === 'accepted') { %><span class="badge bg-success bg-opacity-10 text-success">Accepted</span>
               <% } else { %><span class="badge bg-danger bg-opacity-10 text-danger">Rejected</span><% } %>
             </div>
 
-            <% if (rfq.quote_status === 'pending') { %>
+            <% if (rfq.quote_status === 'pending' && rfq.status === 'quoted') { %>
             <hr>
             <div class="d-flex gap-2">
               <form action="/rfqs/<%= rfq.id %>/accept/<%= rfq.quote_id %>" method="POST" class="flex-fill">
-                <button class="btn btn-success w-100">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"/></svg>
-                  Accept & Create Contract
-                </button>
+                <button class="btn btn-success w-100">Accept and Create Order</button>
               </form>
               <form action="/rfqs/<%= rfq.id %>/reject/<%= rfq.quote_id %>" method="POST">
                 <button class="btn btn-outline-danger px-4">Reject</button>
@@ -136,7 +132,7 @@
               <span class="visually-hidden">Loading...</span>
             </div>
             <h5 class="fw-bold">Awaiting Supplier Response</h5>
-            <p class="text-muted small">The supplier has been notified and will review your request. You'll see their quotation here once submitted.</p>
+            <p class="text-muted small">The supplier has not submitted a quote yet.</p>
           </div>
         </div>
         <% } %>
@@ -144,7 +140,7 @@
     </div>
 
     <div class="mt-4">
-      <a href="/rfqs" class="btn btn-outline-secondary">← Back to My RFQs</a>
+      <a href="/rfqs" class="btn btn-outline-secondary">Back to My RFQs</a>
     </div>
   </div>
   <%- include('partials/footer') %>

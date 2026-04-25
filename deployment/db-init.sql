@@ -4,6 +4,14 @@
 CREATE DATABASE IF NOT EXISTS b2bmarket;
 USE b2bmarket;
 
+-- Shared session table for express-mysql-session
+CREATE TABLE IF NOT EXISTS sessions (
+  session_id VARCHAR(128) NOT NULL PRIMARY KEY,
+  expires INT UNSIGNED NOT NULL,
+  data MEDIUMTEXT,
+  KEY idx_sessions_expires (expires)
+);
+
 -- Users table (with approval status for admin workflow)
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,

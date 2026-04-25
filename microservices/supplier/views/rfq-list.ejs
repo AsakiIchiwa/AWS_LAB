@@ -76,12 +76,13 @@
                   <% if (r.status === 'pending') { %><span class="badge bg-warning">Needs Quote</span>
                   <% } else if (r.status === 'quoted') { %><span class="badge bg-info">Quoted</span>
                   <% } else if (r.status === 'accepted') { %><span class="badge bg-success">Accepted</span>
+                  <% } else if (r.status === 'rejected') { %><span class="badge bg-danger">Rejected</span>
                   <% } else { %><span class="badge bg-secondary"><%= r.status %></span><% } %>
                 </td>
                 <td><%= new Date(r.created_at).toLocaleDateString() %></td>
                 <td class="text-end">
                   <a href="/admin/rfqs/<%= r.id %>" class="btn btn-sm <%= r.status === 'pending' ? 'btn-success' : 'btn-outline-primary' %>">
-                    <%= r.status === 'pending' ? 'Submit Quote' : 'View Details' %>
+                    <%= r.status === 'pending' ? 'Submit Quote' : (r.status === 'quoted' ? 'Update Quote' : 'View Details') %>
                   </a>
                 </td>
               </tr>
