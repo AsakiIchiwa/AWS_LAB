@@ -108,7 +108,7 @@ Handles the buyer-facing experience. Shops browse products, send RFQs to supplie
 
 ### Supplier Service (Seller + Admin)
 
-Handles seller operations and system administration. Suppliers manage inventory, respond to RFQs with quotes, confirm contracts and orders, and process payments. The Admin role (integrated here) approves users/products and monitors system activity.
+Handles seller operations and system administration. Suppliers manage inventory, respond to RFQs with quotes, confirm contracts and orders, and process payments. The Admin role (integrated here) approves users/products and monitors system activity. The Supplier Service has its own independent authentication flow (`/admin/login`, `/admin/register`, `/admin/logout`) with its own login and registration views — it does not redirect to the Shop Service for authentication.
 
 | Responsibility | Description |
 |---|---|
@@ -316,7 +316,7 @@ The application implements multiple layers of security:
 | Layer | Implementation | Description |
 |---|---|---|
 | Authentication | `bcryptjs` + `express-session` | Password hashing (10 salt rounds), session-based login, role-based access control |
-| Auth Middleware | `requireAuth`, `requireAdmin` | All routes protected; admin routes require admin role |
+| Auth Middleware | `requireAuth`, `requireAdmin` | All routes protected; unauthenticated users redirected to service-specific login (`/login` for Shop, `/admin/login` for Supplier); admin routes require admin role |
 | HTTP Headers | `helmet` | Sets security headers: X-XSS-Protection, X-Content-Type-Options, Strict-Transport-Security, X-Frame-Options |
 | CORS | `cors` | Configurable origin restriction via `ALLOWED_ORIGINS` env var |
 | Rate Limiting | `express-rate-limit` | Global: 200 req/15min per IP. Write operations: 10-20 req/min per IP |

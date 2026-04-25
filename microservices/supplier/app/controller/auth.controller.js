@@ -1,37 +1,37 @@
 const Auth = require("../models/auth.model");
 
-// Redirect to unified login on shop service
+// Render supplier login form
 exports.loginForm = (req, res) => {
-  res.redirect("/login");
+  res.render("login", { error: null });
 };
 
-// Keep POST handler as fallback (in case form is submitted directly)
+// Handle login POST
 exports.login = (req, res) => {
   const email = (req.body.email || "").trim().toLowerCase();
   const password = req.body.password || "";
 
   if (!email || !password) {
-    return res.redirect("/login");
+    return res.render("login", { error: "Email and password are required" });
   }
 
   Auth.login(email, password, (err, user) => {
     if (err) {
-      return res.redirect("/login");
+      return res.render("login", { error: "Invalid email or password" });
     }
     if (user.role !== "supplier" && user.role !== "admin") {
-      return res.redirect("/login");
+      return res.render("login", { error: "Access denied. Supplier or Admin account required." });
     }
     req.session.user = user;
     res.redirect("/admin/");
   });
 };
 
-// Redirect to unified register on shop service
+// Render supplier register form
 exports.registerForm = (req, res) => {
-  res.redirect("/register");
+  res.render("register", { error: null });
 };
 
-// Keep POST handler as fallback
+// Handle register POST
 exports.register = (req, res) => {
   const email = (req.body.email || "").trim().toLowerCase().replace(/<[^>]*>/g, "");
   const full_name = (req.body.full_name || "").trim().replace(/<[^>]*>/g, "");
@@ -40,26 +40,26 @@ exports.register = (req, res) => {
   const role = req.body.role === "supplier" ? "supplier" : "shop";
 
   if (!email || !full_name || !password) {
-    return res.redirect("/register");
+    return res.render("register", { error: "All fields are required" });
   }
   if (password.length < 6) {
-    return res.redirect("/register");
+    return res.render("register", { error: "Password must be at least 6 characters" });
   }
   if (password !== confirm_password) {
-    return res.redirect("/register");
+    return res.render("register", { error: "Passwords do not match" });
   }
 
   Auth.register({ email, full_name, password, role }, (err, user) => {
     if (err) {
-      return res.redirect("/register");
+      return res.render("register", { error: err.message || "Registration failed. Email may already be in use." });
     }
-    res.redirect("/login");
+    res.render("login", { error: "Registration successful! Please wait for admin approval before logging in." });
   });
 };
 
 exports.logout = (req, res) => {
   req.session.destroy(() => {
-    res.redirect("/login");
+    res.redirect("/admin/login");
   });
 };
 

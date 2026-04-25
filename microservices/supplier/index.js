@@ -103,7 +103,7 @@ app.get("/health", (req, res) => {
 
 function requireAuth(req, res, next) {
   if (!req.session.user) {
-    return res.redirect("/login");
+    return res.redirect("/admin/login");
   }
   if (req.session.user.role !== "supplier" && req.session.user.role !== "admin") {
     return res.status(403).render("error", { message: "Access denied. Supplier or Admin account required." });
@@ -113,7 +113,7 @@ function requireAuth(req, res, next) {
 
 function requireAdmin(req, res, next) {
   if (!req.session.user) {
-    return res.redirect("/login");
+    return res.redirect("/admin/login");
   }
   if (req.session.user.role !== "admin") {
     return res.status(403).render("error", { message: "Access denied. Admin role required." });

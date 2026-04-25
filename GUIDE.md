@@ -1126,20 +1126,32 @@ Since Learner Lab does not allow custom IAM users/groups/roles, role-based acces
 #### How It Works in Code
 
 ```javascript
-// Authentication middleware (like IAM identity verification)
+// Shop Service — Authentication middleware (like IAM identity verification)
 const requireAuth = (req, res, next) => {
-  if (!req.session.user) return res.redirect('/login'); // No identity → deny
+  if (!req.session.user) return res.redirect('/login'); // No identity → deny (shop login)
   next(); // Identity verified → proceed
 };
 
-// Authorization middleware (like IAM policy: "Effect: Allow, Action: admin:*")
+// Supplier Service — Authentication middleware (redirects to supplier's own login)
+const requireAuth = (req, res, next) => {
+  if (!req.session.user) return res.redirect('/admin/login'); // No identity → deny (supplier login)
+  if (req.session.user.role !== 'supplier' && req.session.user.role !== 'admin') {
+    return res.status(403).render('error', { message: 'Access denied. Supplier or Admin account required.' });
+  }
+  next(); // Identity verified + correct role → proceed
+};
+
+// Supplier Service — Authorization middleware (like IAM policy: "Effect: Allow, Action: admin:*")
 const requireAdmin = (req, res, next) => {
-  if (req.session.user.role !== 'admin') return res.status(403).send('Forbidden');
+  if (!req.session.user) return res.redirect('/admin/login');
+  if (req.session.user.role !== 'admin') {
+    return res.status(403).render('error', { message: 'Access denied. Admin role required.' });
+  }
   next(); // Role = admin → allow
 };
 
 // Route-level access control (like IAM resource-based policies)
-app.get('/admin/manage', requireAuth, requireAdmin, adminController.dashboard);
+app.get('/admin/manage', requireAdmin, adminController.dashboard);
 // Only authenticated users with admin role can access this route
 ```
 
