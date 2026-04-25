@@ -510,7 +510,6 @@ sed -i 's/<RDS-ENDPOINT>/b2bmarket-db.cxxxxx.us-east-1.rds.amazonaws.com/g' task
 ```
 
 > **Note**: Replace `b2bmarket-db.cxxxxx.us-east-1.rds.amazonaws.com` with your actual RDS endpoint.
-```
 
 ---
 
@@ -518,29 +517,28 @@ sed -i 's/<RDS-ENDPOINT>/b2bmarket-db.cxxxxx.us-east-1.rds.amazonaws.com/g' task
 
 ### Task 7.1: Create a security group for the ALB and ECS tasks
 
-In the **EC2** console → **Security Groups** → **Create Security Group**:
+1. Open the **EC2** console → **Security Groups** → **Create Security Group**
+2. Configure the **ALB Security Group**:
+   - **Name**: `b2b-alb-sg`
+   - **VPC**: LabVPC (or your chosen VPC)
+   - **Inbound Rules**: Type: **HTTP (TCP 80)**, Source: **Anywhere (0.0.0.0/0)**
+   - **Outbound Rules**: Default (all traffic)
+3. Select **Create security group**
+4. Create a second security group — the **ECS Tasks Security Group**:
+   - **Name**: `b2b-ecs-sg`
+   - **VPC**: LabVPC (or your chosen VPC)
+   - **Inbound Rules**: Type: **Custom TCP**, Port: **8080**, Source: **Custom** → `b2b-alb-sg` (ALB security group)
+   - **Outbound Rules**: Default (all traffic — needed for ECR pulls, RDS access, S3 access, CloudWatch)
+5. Select **Create security group**
+6. Update the RDS security group (`b2b-rds-sg`) to allow traffic from ECS:
+   - Add Inbound Rule: Type: **MySQL/Aurora (TCP 3306)**, Source: **Custom** → `b2b-ecs-sg`
 
-**Security Group 1: ALB Security Group**
-- **Name**: `b2b-alb-sg`
-- **VPC**: LabVPC (or your chosen VPC)
-- **Inbound Rules**:
-  - Type: **HTTP (TCP 80)**, Source: **Anywhere (0.0.0.0/0)**
-- **Outbound Rules**: Default (all traffic)
+The final layered network architecture:
 
-**Security Group 2: ECS Tasks Security Group**
-- **Name**: `b2b-ecs-sg`
-- **VPC**: LabVPC (or your chosen VPC)
-- **Inbound Rules**:
-  - Type: **Custom TCP**, Port: **8080**, Source: **Custom** → `b2b-alb-sg` (ALB security group)
-- **Outbound Rules**: Default (all traffic — needed for ECR pulls, RDS access, S3 access, CloudWatch)
-
-Then update the RDS security group (`b2b-rds-sg`) to allow traffic from ECS:
-- Add Inbound Rule: Type: **MySQL/Aurora (TCP 3306)**, Source: **Custom** → `b2b-ecs-sg`
-
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │  b2b-alb-sg (ALB Security Group)                        │
-│  Inbound:  TCP 80 from 0.0.0.0/0 (Internet)            │
+│  Inbound:  TCP 80 from 0.0.0.0/0 (Internet)             │
 │  Outbound: All traffic                                  │
 └──────────────────────┬──────────────────────────────────┘
                        │ TCP 8080
@@ -606,6 +604,7 @@ For each target group:
 6. Select **Create**
 
 The final listener rules should be:
+
 | Priority | Condition | Action |
 |---|---|---|
 | 1 | Path is `/admin/*` | Forward to `supplier-tg-two` |
