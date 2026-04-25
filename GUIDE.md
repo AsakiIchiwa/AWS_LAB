@@ -1249,10 +1249,13 @@ Since Learner Lab does not allow custom IAM users/groups/roles, role-based acces
 #### How It Works in Code
 
 ```javascript
-// Shop Service — Authentication middleware (like IAM identity verification)
+// Shop Service — Authentication middleware (like IAM identity verification + role check)
 const requireAuth = (req, res, next) => {
   if (!req.session.user) return res.redirect('/login'); // No identity → deny (shop login)
-  next(); // Identity verified → proceed
+  if (req.session.user.role !== 'shop') {
+    return res.status(403).render('error', { message: 'Access denied. Shop account required.' });
+  }
+  next(); // Identity verified + correct role → proceed
 };
 
 // Supplier Service — Authentication middleware (redirects to supplier's own login)
